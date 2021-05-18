@@ -1,0 +1,5 @@
+linkedin-api~=2.0.0a
+styleframe==4.0.0
+pandas==1.2.4
+requests==2.25.1
+python-dotenv==0.17.1
