@@ -1,11 +1,8 @@
-from selenium import webdriver
-from webdriver_manager.chrome import ChromeDriverManager
 import pandas as pd
 from time import sleep
-
-chrome_options = webdriver.ChromeOptions()
-chrome_options.add_argument("--log-level=3")
-driver = webdriver.Chrome(ChromeDriverManager().install(), options=chrome_options)
+import http.client
+import json
+from urllib.parse import quote_plus
 
 # for headless
 # chrome_options = Options()
@@ -26,6 +23,25 @@ df = pd.read_excel(
 )
 
 
+def google(search_term):
+    conn = http.client.HTTPSConnection("google-search3.p.rapidapi.com")
+    conn.request(
+        "GET",
+        f"/api/v1/search/q={quote_plus(search_term)}&num=100",
+        headers={
+            "x-rapidapi-key": "FJviVQShGTmshjDIBZX74GdlFRkOp1eUIT0jsnL7BOQJL4fWV6",
+            "x-rapidapi-host": "google-search3.p.rapidapi.com",
+        },
+    )
+    try:
+        data = conn.getresponse().read().decode("utf-8")
+        json_data = json.loads(data)
+    except Exception:
+        print("Error scrapping Google")
+        return []
+    return [{"title": result["title"], "link": result["link"]} for result in json_data["results"]]
+
+
 def search_profile(name):
     name = name.lower()
     print(f"Processing: {name}")
@@ -34,19 +50,16 @@ def search_profile(name):
 
     for platform in social_links:
         print(f"Searching: {platform}")
-        search_query = f'{name} site:{platform}.com "cancer" "oncology"'
+        search_query = f'{name} site:{platform}.com "cancer" OR "oncology"'
 
-        driver.get(f"https://www.google.com/search?q={search_query}")
-        search_headings = driver.find_elements_by_css_selector(".yuRUbf")
-        for heading in search_headings:
-            site_title = heading.find_element_by_tag_name("h3").text
-            site_link = heading.find_element_by_tag_name("a").get_attribute("href").split("?")[0]
+        results = google(search_query)
 
-            if name in site_title.lower() and site_link not in social_links[platform]:
-                social_links[platform] += site_link + ", "
+        for result in results:
+            if name in result["title"].lower() and result["link"] not in social_links[platform]:
+                social_links[platform] += result["link"] + ", "
 
-        print("Links:", social_links[platform], "\nWaiting 10 seconds...")
-        sleep(10)
+        print("Links:", social_links[platform])
+        sleep(2)
 
     return social_links
 
@@ -58,8 +71,6 @@ for i, row in df.iterrows():
     for key in links_dict:
         df.at[i, f"{key}Url"] = links_dict[key]
 
-    print("Waiting 60 seconds...")
-    sleep(60)
-
-df.to_excel("filled_doc_data.xlsx")
-driver.quit()
+    df.to_excel("filled_doc_data.xlsx")
+    print("Waiting 10 seconds...")
+    sleep(10)
