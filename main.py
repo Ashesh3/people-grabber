@@ -44,7 +44,6 @@ def google(search_term):
 
 def search_profile(name):
     name = name.lower()
-    print(f"Processing: {name}")
 
     social_links = {"linkedin": [], "twitter": [], "instagram": [], "reddit": [], "youtube": [], "facebook": []}
 
@@ -66,6 +65,8 @@ def search_profile(name):
 
 for i, row in df.iterrows():
     doc_name = f"{row['first']} {row['last']}"
+    print(f"==== #{i} : {doc_name} ====")
+
     links_dict = search_profile(doc_name)
 
     for key in links_dict:
