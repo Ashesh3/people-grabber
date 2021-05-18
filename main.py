@@ -46,20 +46,20 @@ def search_profile(name):
     name = name.lower()
     print(f"Processing: {name}")
 
-    social_links = {"linkedin": "", "twitter": "", "instagram": "", "reddit": "", "youtube": "", "facebook": ""}
+    social_links = {"linkedin": [], "twitter": [], "instagram": [], "reddit": [], "youtube": [], "facebook": []}
 
     for platform in social_links:
         print(f"Searching: {platform}")
-        search_query = f'{name} site:{platform}.com "cancer" OR "oncology"'
+        search_query = f'{name} site:www.{platform}.com "cancer" OR "oncology" OR "nurse"'
 
         results = google(search_query)
 
         for result in results:
             if name in result["title"].lower() and result["link"] not in social_links[platform]:
-                social_links[platform] += result["link"] + ", "
+                social_links[platform].append(result["link"])
 
         print("Links:", social_links[platform])
-        sleep(2)
+        sleep(1)
 
     return social_links
 
@@ -69,7 +69,7 @@ for i, row in df.iterrows():
     links_dict = search_profile(doc_name)
 
     for key in links_dict:
-        df.at[i, f"{key}Url"] = links_dict[key]
+        df.at[i, f"{key}Url"] = ",".join(links_dict[key])
 
     df.to_excel("filled_doc_data.xlsx")
     print("Waiting 10 seconds...")
