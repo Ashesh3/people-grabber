@@ -1,77 +1,19 @@
-import pandas as pd
 from time import sleep
-import http.client
-import json
-from urllib.parse import quote_plus
+from data import DataReader
+from search_modules import *
 
-# for headless
-# chrome_options = Options()
-# chrome_options.add_argument("--headless")
-# chrome_options.add_argument("--window-size=1920x1080")
-# driver = webdriver.Chrome(ChromeDriverManager().install(), options = chrome_options)
+keywords = ["oncology", "cancer", "nurse"]
+doc_data = DataReader("doc_data.xlsx")
 
-df = pd.read_excel(
-    "doc_data.xlsx",
-    converters={
-        "linkedinUrl": str,
-        "instagramUrl": str,
-        "twitterUrl": str,
-        "redditUrl": str,
-        "youtubeUrl": str,
-        "facebookUrl": str,
-    },
-)
-
-
-def google(search_term):
-    conn = http.client.HTTPSConnection("google-search3.p.rapidapi.com")
-    conn.request(
-        "GET",
-        f"/api/v1/search/q={quote_plus(search_term)}&num=100",
-        headers={
-            "x-rapidapi-key": "FJviVQShGTmshjDIBZX74GdlFRkOp1eUIT0jsnL7BOQJL4fWV6",
-            "x-rapidapi-host": "google-search3.p.rapidapi.com",
-        },
-    )
-    try:
-        data = conn.getresponse().read().decode("utf-8")
-        json_data = json.loads(data)
-    except Exception:
-        print("Error scrapping Google")
-        return []
-    return [{"title": result["title"], "link": result["link"]} for result in json_data["results"]]
-
-
-def search_profile(name):
-    name = name.lower()
-
-    social_links = {"linkedin": [], "twitter": [], "instagram": [], "reddit": [], "youtube": [], "facebook": []}
-
-    for platform in social_links:
-        print(f"Searching: {platform}")
-        search_query = f'{name} site:www.{platform}.com "cancer" OR "oncology" OR "nurse"'
-
-        results = google(search_query)
-
-        for result in results:
-            if name in result["title"].lower() and result["link"] not in social_links[platform]:
-                social_links[platform].append(result["link"])
-
-        print("Links:", social_links[platform])
-        sleep(1)
-
-    return social_links
-
-
-for i, row in df.iterrows():
+for i, row in doc_data.get_rows():
     doc_name = f"{row['first']} {row['last']}"
     print(f"==== #{i} : {doc_name} ====")
 
-    links_dict = search_profile(doc_name)
+    linkedin_links = Linkedin.search(doc_name, keywords)
+    doc_data.write_data(i, "linkedin", ", ".join(linkedin_links))
 
-    for key in links_dict:
-        df.at[i, f"{key}Url"] = ",".join(links_dict[key])
+    twitter_results = Twitter.search(doc_name, keywords)
+    doc_data.write_data(i, "twitter", ", ".join(twitter_results))
 
-    df.to_excel("filled_doc_data.xlsx")
     print("Waiting 10 seconds...")
     sleep(10)
