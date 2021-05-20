@@ -31,16 +31,16 @@ def get_search_query(doc_name: str, site: str, keyword: KeywordSet) -> str:
 def google_search(search_term) -> List[GoogleResults]:
     if search_term in cache:
         return cache[search_term]
-    conn = http.client.HTTPSConnection("google-search3.p.rapidapi.com")
-    conn.request(
-        "GET",
-        f"/api/v1/search/q={quote_plus(search_term)}&num=100",
-        headers={
-            "x-rapidapi-key": "FJviVQShGTmshjDIBZX74GdlFRkOp1eUIT0jsnL7BOQJL4fWV6",
-            "x-rapidapi-host": "google-search3.p.rapidapi.com",
-        },
-    )
     try:
+        conn = http.client.HTTPSConnection("google-search3.p.rapidapi.com")
+        conn.request(
+            "GET",
+            f"/api/v1/search/q={quote_plus(search_term)}&num=100",
+            headers={
+                "x-rapidapi-key": "FJviVQShGTmshjDIBZX74GdlFRkOp1eUIT0jsnL7BOQJL4fWV6",
+                "x-rapidapi-host": "google-search3.p.rapidapi.com",
+            },
+        )
         data = conn.getresponse().read().decode("utf-8")
         json_data = json.loads(data)
     except Exception:
