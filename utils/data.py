@@ -1,6 +1,7 @@
 from typing import Any, Iterator, Tuple
 import pandas as pd
 from utils.types import *
+from styleframe import StyleFrame
 
 
 class DataReader:
@@ -32,4 +33,4 @@ class DataReader:
             yield i, row
 
     def save(self):
-        self._df.to_excel(self._save_file_name)
+        StyleFrame(self._df).to_excel(self._save_file_name).save()
