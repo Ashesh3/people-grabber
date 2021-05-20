@@ -5,7 +5,7 @@ from utils.types import *
 
 class Linkedin:
     @staticmethod
-    def search(doc_name: str, speciality: str) -> List[ModuleResults]:
+    def search(doc_name: str, speciality: str, max_terms: int = 10) -> List[ModuleResults]:
         doc_name = doc_name.lower()
         print(f"Searching: Linkedin")
 
@@ -26,4 +26,4 @@ class Linkedin:
                 if confidence > 0:
                     search_hits.append({"link": result["link"], "confidence": confidence})
 
-        return sorted(search_hits, key=lambda x: x["confidence"], reverse=True)[:1]
+        return sorted(search_hits, key=lambda x: x["confidence"], reverse=True)[:max_terms]
