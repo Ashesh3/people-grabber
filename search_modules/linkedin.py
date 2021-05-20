@@ -1,27 +1,26 @@
 from typing import List
-from .ISearch import SerchModule
-from ..search import google_search, get_search_query, keywords_from_speciality
+from utils.search import google_search, get_search_query, keywords_from_speciality
+from utils.types import *
 
 
-class Linkedin(SerchModule):
+class Linkedin:
     @staticmethod
-    def search(doc_name: str, speciality: str) -> List[str]:
+    def search(doc_name: str, speciality: str) -> List[ModuleResults]:
         doc_name = doc_name.lower()
         print(f"Searching: Linkedin")
 
-        search_results = []
-        keywords_set = keywords_from_speciality(speciality)
-        for keyword in keywords_set:
-            search_query = get_search_query(doc_name, "www.linkedin.com", keyword)
-            search_results.extend(google_search(search_query))
+        search_hits: List[ModuleResults] = []
 
-        search_hits: List[str] = []
-        for result in search_results:
-            # Todo: Add Filtering Logic and append to search_hits
-            # A single result object is in the form {"title": ..., "link": ..., "description": ...}
-            # On match, append result.link to search_hits
-            if ...:
-                ...
-                # search_hits.append(result.link)
+        keywords_sets = keywords_from_speciality(speciality)
+        for keyword_set in keywords_sets:
+            search_query = get_search_query(doc_name, "www.linkedin.com", keyword_set)
+            search_results = google_search(search_query)
 
-        return search_hits
+            for result in search_results:
+                total_keywords = len(keyword_set["keywords"])
+                result_content = result["title"] + result["description"]
+                matched_keywords = sum([keyword in result_content for keyword in keyword_set["keywords"]])
+                confidence = round((matched_keywords / total_keywords) * 100, 2)
+                search_hits.append({"link": result["link"], "confidence": confidence})
+
+        return sorted(search_hits, key=lambda x: x["confidence"], reverse=True)
