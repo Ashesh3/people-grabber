@@ -17,6 +17,8 @@ class Linkedin:
             search_results = google_search(search_query)
 
             for result in search_results:
+                if "pub/dir" in result["link"]:
+                    continue
                 total_keywords = len(keyword_set["keywords"])
                 result_content = (result["title"] + result["description"]).lower()
                 matched_keywords = sum([keyword.lower() in result_content for keyword in keyword_set["keywords"]])
@@ -24,4 +26,4 @@ class Linkedin:
                 if confidence > 0:
                     search_hits.append({"link": result["link"], "confidence": confidence})
 
-        return sorted(search_hits, key=lambda x: x["confidence"], reverse=True)
+        return sorted(search_hits, key=lambda x: x["confidence"], reverse=True)[:1]
