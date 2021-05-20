@@ -4,9 +4,8 @@ from typing import List, Dict, Union
 from urllib.parse import quote_plus
 from utils.types import *
 
-json_file = open("cache.json", "w")
-
-cache = json.load(json_file)
+with open("cache.json") as json_file:
+    cache = json.load(json_file)
 
 
 def keywords_from_speciality(speciality: str) -> List[KeywordSet]:
@@ -50,5 +49,6 @@ def google_search(search_term) -> List[GoogleResults]:
         for result in json_data["results"]
     ]
     cache[search_term] = final_search_results
-    json.dump(cache, json_file)
+    with open("cache.json", "w") as json_file:
+        json.dump(cache, json_file)
     return final_search_results
