@@ -4,8 +4,18 @@ from typing import List, Dict
 from urllib.parse import quote_plus
 
 
-def get_search_query(doc_name: str, site: str, keywords: List[str]) -> str:
-    return f"{doc_name} site:{site} " + " ".join([f'"{word}"' for word in keywords])
+def keywords_from_speciality(speciality: str) -> List[str]:
+    if speciality == "Registered Nurse - Oncology":
+        return ['"Registered Nurse" AND "Oncology"', '"Nurse" OR "Oncology" OR "RN" OR "Cancer"']
+    if speciality == "Pharmacist - Oncology":
+        ...
+    # todo: add rest of keyword phases
+
+    raise ValueError("Invalid Speciality")
+
+
+def get_search_query(doc_name: str, site: str, keywords: str) -> str:
+    return f"{doc_name} site:{site} {keywords}"
 
 
 def google_search(search_term) -> List[Dict]:
