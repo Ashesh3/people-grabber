@@ -5,7 +5,10 @@ from urllib.parse import quote_plus
 from utils.types import *
 
 with open("cache.json") as json_file:
-    cache = json.load(json_file)
+    try:
+        cache = json.load(json_file)
+    except json.JSONDecodeError:
+        cache = {}
 
 
 def keywords_from_speciality(speciality: str) -> List[KeywordSet]:

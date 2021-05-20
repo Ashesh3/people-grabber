@@ -2,3 +2,4 @@
 .vscode
 *.xlsx
 __pycache__
+cache.json
