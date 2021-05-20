@@ -18,9 +18,10 @@ class Linkedin:
 
             for result in search_results:
                 total_keywords = len(keyword_set["keywords"])
-                result_content = result["title"] + result["description"]
-                matched_keywords = sum([keyword in result_content for keyword in keyword_set["keywords"]])
+                result_content = (result["title"] + result["description"]).lower()
+                matched_keywords = sum([keyword.lower() in result_content for keyword in keyword_set["keywords"]])
                 confidence = round((matched_keywords / total_keywords) * 100, 2)
-                search_hits.append({"link": result["link"], "confidence": confidence})
+                if confidence > 0:
+                    search_hits.append({"link": result["link"], "confidence": confidence})
 
         return sorted(search_hits, key=lambda x: x["confidence"], reverse=True)
