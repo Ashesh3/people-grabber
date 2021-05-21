@@ -19,7 +19,7 @@ def keywords_from_speciality(speciality: str) -> List[KeywordSet]:
             {"keywords": ["Registered Nurse", "Oncology"], "operator": "AND"},
             {"keywords": ["Nurse", "Oncology", " RN", "Cancer"], "operator": "OR"},
         ]
-    if speciality == "NEPHROLOGY":
+    if speciality in ["NEPHROLOGY", "PEDIATRIC NEPHROLOGY"]:
         return [
             {"keywords": ["nephrology", "nephrologist", "kidney", "renal", "nephro", "MD"], "operator": "OR"},
         ]
@@ -47,6 +47,8 @@ def google_search(search_term) -> List[GoogleResults]:
         )
         data = conn.getresponse().read().decode("utf-8")
         json_data = json.loads(data)
+        if "messages" in json_data:
+            raise ValueError()
     except Exception:
         print("Error scrapping Google")
         return []
