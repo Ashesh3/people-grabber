@@ -10,14 +10,19 @@ from fcache.cache import FileCache
 cache = FileCache("doctor", flag="cs", app_cache_dir="cache")
 
 
+# nephrology, nephrologist, kidney, renal, nephro
+
+
 def keywords_from_speciality(speciality: str) -> List[KeywordSet]:
     if speciality == "Registered Nurse - Oncology":
         return [
             {"keywords": ["Registered Nurse", "Oncology"], "operator": "AND"},
             {"keywords": ["Nurse", "Oncology", " RN", "Cancer"], "operator": "OR"},
         ]
-    if speciality == "Pharmacist - Oncology":
-        ...
+    if speciality == "NEPHROLOGY":
+        return [
+            {"keywords": ["nephrology", "nephrologist", "kidney", "renal", "nephro", "MD"], "operator": "OR"},
+        ]
     # todo: add rest of keyword phases
 
     raise ValueError("Invalid Speciality")
@@ -36,7 +41,7 @@ def google_search(search_term) -> List[GoogleResults]:
             "GET",
             f"/api/v1/search/q={quote_plus(search_term)}&num=100",
             headers={
-                "x-rapidapi-key": "FJviVQShGTmshjDIBZX74GdlFRkOp1eUIT0jsnL7BOQJL4fWV6",
+                "x-rapidapi-key": "30ed649aeamshbc757f7b0ab41c0p1bb1b2jsn33578965c40b",
                 "x-rapidapi-host": "google-search3.p.rapidapi.com",
             },
         )
