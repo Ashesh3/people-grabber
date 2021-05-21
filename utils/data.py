@@ -24,7 +24,6 @@ class DataReader:
             raise ValueError("Invalid Sitename")
 
         self._df.at[row_no, f"{site_name}Url"] = ", \n".join([f'{result["confidence"]}:{result["link"]}' for result in data])
-        self.save()
 
     def get_rows(self, start: int = 0) -> Iterator[Tuple[Any, pd.Series]]:
         for row_no, (i, row) in enumerate(self._df.iterrows()):
