@@ -5,10 +5,9 @@ from urllib.parse import quote_plus
 from utils.types import *
 import requests
 import re
-from fcache.cache import FileCache
+import shelve
 
-cache = FileCache("doctor", flag="cs", app_cache_dir="cache")
-
+cache = shelve.open("cache", writeback=True)
 
 # nephrology, nephrologist, kidney, renal, nephro
 
