@@ -1,5 +1,5 @@
 from typing import List
-from utils.search import google_search, get_search_query, keywords_from_speciality
+from utils.search import google_search, get_search_query, keywords_from_speciality, linkedin_search
 from utils.types import *
 
 
@@ -17,10 +17,11 @@ class Linkedin:
             search_results = google_search(search_query)
 
             for result in search_results:
-                if "pub/dir" in result["link"]:
+                if "pub/dir" in result["link"] or "linkedin.com/in/" not in result["link"]:
                     continue
                 total_keywords = len(keyword_set["keywords"])
-                result_content = (result["title"] + result["description"]).lower()
+                linkedin_profile = linkedin_search(result["link"].split("linkedin.com/in/")[1].split("?")[0].split("/")[0])
+                result_content = (result["title"] + result["description"]).lower() + linkedin_profile.lower()
                 matched_keywords = sum([keyword.lower() in result_content for keyword in keyword_set["keywords"]])
                 confidence = round((matched_keywords / total_keywords) * 100, 2)
                 if confidence > 0:

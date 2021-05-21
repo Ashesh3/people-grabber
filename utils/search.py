@@ -1,15 +1,26 @@
 import http.client
+import os
 import json
+import re
+import requests
+import shelve
 from typing import List, Dict, Union
 from urllib.parse import quote_plus
 from utils.types import *
-import requests
-import re
-import shelve
+from dotenv import load_dotenv
+from linkedin_api import Linkedin
 
+load_dotenv()
 cache = shelve.open("cache", writeback=True)
+api = Linkedin(os.getenv("LINKEDIN_EMAIL"), os.getenv("LINKEDIN_PASS"))
 
-# nephrology, nephrologist, kidney, renal, nephro
+
+def linkedin_search(username: str) -> str:
+    if f"linkedin:{username}" in cache:
+        return cache[f"linkedin:{username}"]
+    search_result = json.dumps(api.get_profile_skills(username)) + json.dumps(api.get_profile(username))
+    cache[f"linkedin:{username}"] = search_result
+    return search_result
 
 
 def keywords_from_speciality(speciality: str) -> List[KeywordSet]:
@@ -20,7 +31,7 @@ def keywords_from_speciality(speciality: str) -> List[KeywordSet]:
         ]
     if speciality in ["NEPHROLOGY", "PEDIATRIC NEPHROLOGY"]:
         return [
-            {"keywords": ["nephrology", "nephrologist", "kidney", "renal", "nephro", "MD"], "operator": "OR"},
+            {"keywords": ["nephrology", "nephrologist", "kidney", "renal", "nephro"], "operator": "OR"},
         ]
     # todo: add rest of keyword phases
 
@@ -33,13 +44,13 @@ def get_search_query(doc_name: str, site: str, keyword: KeywordSet) -> str:
 
 def google_search(search_term) -> List[GoogleResults]:
     if search_term in cache:
-        return cache[search_term]  # type: ignore
+        return cache[search_term]
     conn = http.client.HTTPSConnection("google-search3.p.rapidapi.com")
     conn.request(
         "GET",
         f"/api/v1/search/q={quote_plus(search_term)}&num=100",
         headers={
-            "x-rapidapi-key": "30ed649aeamshbc757f7b0ab41c0p1bb1b2jsn33578965c40b",
+            "x-rapidapi-key": os.getenv("RAPIDAPI_KEY", ""),
             "x-rapidapi-host": "google-search3.p.rapidapi.com",
         },
     )
@@ -88,7 +99,7 @@ class TwitterSearch:
 
     def query(self, query, search_type) -> Dict[str, TwitterResults]:
         if f"{query}:{search_type}" in cache:
-            return cache[f"{query}:{search_type}"]  # type: ignore
+            return cache[f"{query}:{search_type}"]
         param = {
             "include_profile_interstitial_type": "1",
             "include_blocking": "1",
