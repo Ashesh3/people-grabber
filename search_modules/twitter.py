@@ -1,5 +1,5 @@
-from typing import List
-from utils.types import ModuleResults
+from typing import Any, Dict, List, Union
+from utils.types import ModuleResults, TwitterResults
 from utils.search import TwitterSearch
 from utils.search import keywords_from_speciality
 
@@ -10,14 +10,13 @@ class Twitter:
         print(f"Searching: Twitter")
         t_search = TwitterSearch()
         search_hits: List[ModuleResults] = []
-        users = t_search.query(doc_name.title(), "users")
-
+        users: Dict[str, TwitterResults] = t_search.query(doc_name.title(), "users")
         for user_key in users:
             if doc_name.lower() not in users[user_key]["name"].lower():
                 continue
             screen_name = users[user_key]["screen_name"]
             full_profile = users[user_key]["description"]
-            tweets_result = t_search.query(f"from:{screen_name}", "tweets")
+            tweets_result: Dict[str, TwitterResults] = t_search.query(f"from:{screen_name}", "tweets")
             for tweet_key in tweets_result:
                 tweet_text = tweets_result[tweet_key]["full_text"]
                 full_profile += "\n" + tweet_text
