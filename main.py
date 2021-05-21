@@ -4,6 +4,8 @@ from utils.data import DataReader
 from search_modules import *
 from time import sleep
 import sys
+import traceback
+
 
 doc_data = DataReader("doc_data.xlsx", "doc_data_output.xlsx")
 
@@ -22,7 +24,8 @@ try:
         print(twitter_links)
         doc_data.write_data(i, "twitter", twitter_links)
 
-except KeyboardInterrupt:
+except:
+    print(traceback.format_exc())
     print("Exiting... Details Saved...")
     doc_data.save()
     sys.exit()
