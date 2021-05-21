@@ -5,12 +5,9 @@ from urllib.parse import quote_plus
 from utils.types import *
 import requests
 import re
+from fcache.cache import FileCache
 
-with open("cache.json") as json_file:
-    try:
-        cache = json.load(json_file)
-    except json.JSONDecodeError:
-        cache = {}
+cache = FileCache("doctor", flag="cs", app_cache_dir="cache")
 
 
 def keywords_from_speciality(speciality: str) -> List[KeywordSet]:
@@ -32,7 +29,7 @@ def get_search_query(doc_name: str, site: str, keyword: KeywordSet) -> str:
 
 def google_search(search_term) -> List[GoogleResults]:
     if search_term in cache:
-        return cache[search_term]
+        return cache[search_term]  # type: ignore
     try:
         conn = http.client.HTTPSConnection("google-search3.p.rapidapi.com")
         conn.request(
@@ -54,8 +51,6 @@ def google_search(search_term) -> List[GoogleResults]:
         for result in json_data["results"]
     ]
     cache[search_term] = final_search_results
-    with open("cache.json", "w") as json_file:
-        json.dump(cache, json_file)
     return final_search_results
 
 
@@ -89,9 +84,9 @@ class TwitterSearch:
         guest_token = s.post("https://api.twitter.com/1.1/guest/activate.json").json()["guest_token"]
         s.headers.update({"x-guest-token": guest_token})
 
-    def query(self, query, search_type):
+    def query(self, query, search_type) -> Dict[str, TwitterResults]:
         if f"{query}:{search_type}" in cache:
-            return cache[f"{query}:{search_type}"]
+            return cache[f"{query}:{search_type}"]  # type: ignore
         param = {
             "include_profile_interstitial_type": "1",
             "include_blocking": "1",
@@ -131,8 +126,6 @@ class TwitterSearch:
         if res.status_code == 200:
             final_search_results = res.json()["globalObjects"][search_type]
             cache[f"{query}:{search_type}"] = final_search_results
-            with open("cache.json", "w") as json_file:
-                json.dump(cache, json_file)
             return final_search_results
         else:
-            return []
+            return {}
