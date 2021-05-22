@@ -9,6 +9,7 @@ from urllib.parse import quote_plus
 from utils.types import *
 from dotenv import load_dotenv
 from linkedin_api import Linkedin
+from time import sleep
 
 load_dotenv()
 cache = shelve.open("cache", writeback=True)
@@ -18,6 +19,7 @@ api = Linkedin(os.getenv("LINKEDIN_EMAIL"), os.getenv("LINKEDIN_PASS"))
 def linkedin_search(username: str) -> str:
     if f"linkedin:{username}" in cache:
         return cache[f"linkedin:{username}"]
+    sleep(60)
     search_result = json.dumps(api.get_profile_skills(username)) + json.dumps(api.get_profile(username))
     cache[f"linkedin:{username}"] = search_result
     return search_result
@@ -42,9 +44,9 @@ def get_search_query(doc_name: str, site: str, keyword: KeywordSet) -> str:
     return f'(intitle:"{doc_name}") site:{site} ' + '"' + f"\" {keyword['operator']} \"".join(keyword["keywords"]) + '"'
 
 
-def google_search(search_term) -> List[GoogleResults]:
+def google_search(search_term: str, max_terms: int = 5) -> List[GoogleResults]:
     if search_term in cache:
-        return cache[search_term]
+        return cache[search_term][:max_terms]
     conn = http.client.HTTPSConnection("google-search3.p.rapidapi.com")
     conn.request(
         "GET",
@@ -64,7 +66,7 @@ def google_search(search_term) -> List[GoogleResults]:
         for result in json_data["results"]
     ]
     cache[search_term] = final_search_results
-    return final_search_results
+    return final_search_results[:max_terms]
 
 
 class TwitterSearch:
