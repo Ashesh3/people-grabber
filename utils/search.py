@@ -9,18 +9,25 @@ from urllib.parse import quote_plus
 from utils.types import *
 from dotenv import load_dotenv
 from linkedin_api import Linkedin
+import twitter
 from time import sleep
 
 load_dotenv()
 cache = shelve.open("cache", writeback=True)
-api = Linkedin(os.getenv("LINKEDIN_EMAIL"), os.getenv("LINKEDIN_PASS"))
+linkedin_api = Linkedin(os.getenv("LINKEDIN_EMAIL"), os.getenv("LINKEDIN_PASS"))
+twitter_api = twitter.Api(
+    consumer_key=os.getenv("TWITTER_API_KEY"),
+    consumer_secret=os.getenv("TWITTER_API_SECRET_KEY"),
+    access_token_key=os.getenv("TWITTER_ACCESS_TOKEN"),
+    access_token_secret=os.getenv("TWITTER_ACCESS_TOKEN_SECRET"),
+)
 
 
 def linkedin_search(username: str) -> str:
     if f"linkedin:{username}" in cache:
         return cache[f"linkedin:{username}"]
     sleep(60)
-    search_result = json.dumps(api.get_profile_skills(username)) + json.dumps(api.get_profile(username))
+    search_result = json.dumps(linkedin_api.get_profile_skills(username)) + json.dumps(linkedin_api.get_profile(username))
     cache[f"linkedin:{username}"] = search_result
     return search_result
 
@@ -102,6 +109,10 @@ class TwitterSearch:
     def query(self, query, search_type) -> Dict[str, TwitterResults]:
         if f"{query}:{search_type}" in cache:
             return cache[f"{query}:{search_type}"]
+        if search_type == "likes":
+            query_result = twitter_api.GetFavorites(screen_name=query)[0]._json
+            cache[f"{query}:{search_type}"] = query_result
+            return query_result
         param = {
             "include_profile_interstitial_type": "1",
             "include_blocking": "1",

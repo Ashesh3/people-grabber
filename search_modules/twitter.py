@@ -16,11 +16,7 @@ class Twitter:
                 continue
             screen_name = users[user_key]["screen_name"]
             full_profile = users[user_key]["description"]
-            tweets_result: Dict[str, TwitterResults] = t_search.query(f"from:{screen_name}", "tweets")
-            for tweet_key in tweets_result:
-                tweet_text = tweets_result[tweet_key]["full_text"]
-                full_profile += "\n" + tweet_text
-
+            full_profile += str(t_search.query(screen_name, "likes"))
             all_keywords: List[str] = []
             for keyword_set in keywords_from_speciality(speciality):
                 all_keywords.extend(keyword_set["keywords"])
