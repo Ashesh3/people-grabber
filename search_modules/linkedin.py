@@ -5,7 +5,7 @@ from utils.types import *
 
 class Linkedin:
     @staticmethod
-    def search(doc_name: str, speciality: str, max_terms: int = 10) -> List[ModuleResults]:
+    async def search(doc_name: str, speciality: str, max_terms: int = 10) -> List[ModuleResults]:
         doc_name = doc_name.lower()
         print(f"Searching: Linkedin")
 
@@ -20,7 +20,7 @@ class Linkedin:
                 if "pub/dir" in result["link"] or "linkedin.com/in/" not in result["link"]:
                     continue
                 total_keywords = len(keyword_set["keywords"])
-                linkedin_profile = linkedin_search(result["link"].split("linkedin.com/in/")[1].split("?")[0].split("/")[0])
+                linkedin_profile = await linkedin_search(result["link"].split("linkedin.com/in/")[1].split("?")[0].split("/")[0])
                 result_content = (result["title"] + result["description"]).lower() + linkedin_profile.lower()
                 matched_keywords = sum([keyword.lower() in result_content for keyword in keyword_set["keywords"]])
                 confidence = round((matched_keywords / total_keywords) * 100, 2)

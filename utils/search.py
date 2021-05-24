@@ -10,7 +10,7 @@ from urllib.parse import quote_plus
 from utils.types import *
 from dotenv import load_dotenv
 from linkedin_api import Linkedin
-from time import sleep
+import asyncio
 
 
 load_dotenv()
@@ -51,10 +51,10 @@ def refresh_twitter_anon_token():
 refresh_twitter_anon_token()
 
 
-def linkedin_search(username: str) -> str:
+async def linkedin_search(username: str) -> str:
     if f"linkedin:{username}" in cache:
         return cache[f"linkedin:{username}"]
-    sleep(60)
+    await asyncio.sleep(60)
     search_result = json.dumps(linkedin_api.get_profile_skills(username)) + json.dumps(linkedin_api.get_profile(username))
     cache[f"linkedin:{username}"] = search_result
     return search_result
@@ -104,11 +104,11 @@ def google_search(search_term: str, max_terms: int = 5) -> List[GoogleResults]:
     return final_search_results[:max_terms]
 
 
-def twitter_query(query, search_type) -> Union[str, Dict[str, TwitterResults]]:
+async def twitter_query(query, search_type) -> Union[str, Dict[str, TwitterResults]]:
     if f"{query}:{search_type}" in cache:
         return cache[f"{query}:{search_type}"]
     if search_type == "likes":
-        sleep(10)
+        await asyncio.sleep(10)
         final_res = ""
         query_result = []
         try:
