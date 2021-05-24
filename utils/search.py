@@ -1,20 +1,19 @@
-import http.client
-import os
-import json
-import re
-import requests
-import shelve
-import twitter
+import http.client, os, json, re, requests, asyncio, zlib, pickle, sqlite3, twitter
 from typing import List, Dict, Union
 from urllib.parse import quote_plus
 from utils.types import *
 from dotenv import load_dotenv
 from linkedin_api import Linkedin
-import asyncio
+from sqlitedict import SqliteDict
 
 
 load_dotenv()
-cache = shelve.open("cache", writeback=True)
+cache = SqliteDict(
+    "./cache.sqlite",
+    encode=lambda obj: sqlite3.Binary(zlib.compress(pickle.dumps(obj, pickle.HIGHEST_PROTOCOL), 9)),
+    decode=lambda obj: pickle.loads(zlib.decompress(bytes(obj))),
+    autocommit=True,
+)
 linkedin_api = Linkedin(os.getenv("LINKEDIN_EMAIL"), os.getenv("LINKEDIN_PASS"))
 twitter_api = twitter.Api(
     consumer_key=os.getenv("TWITTER_API_KEY"),
@@ -114,7 +113,7 @@ async def twitter_query(query, search_type) -> Union[str, Dict[str, TwitterResul
         try:
             query_result = twitter_api.GetFavorites(screen_name=query)
         except twitter.TwitterError as e:
-            print(e)
+            print(f"{query}: {e}")
         if query_result:
             final_res = json.dumps([res._json for res in query_result])
         cache[f"{query}:{search_type}"] = final_res
