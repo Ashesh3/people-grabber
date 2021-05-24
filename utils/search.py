@@ -14,7 +14,7 @@ cache = SqliteDict(
     decode=lambda obj: pickle.loads(zlib.decompress(bytes(obj))),
     autocommit=True,
 )
-linkedin_api = Linkedin(os.getenv("LINKEDIN_EMAIL"), os.getenv("LINKEDIN_PASS"))
+linkedin_api = Linkedin(os.getenv("LINKEDIN_EMAIL"), os.getenv("LINKEDIN_PASS"), refresh_cookies=True)
 twitter_api = twitter.Api(
     consumer_key=os.getenv("TWITTER_API_KEY"),
     consumer_secret=os.getenv("TWITTER_API_SECRET_KEY"),
@@ -23,6 +23,7 @@ twitter_api = twitter.Api(
     sleep_on_rate_limit=True,
 )
 twitter_anon_session = requests.Session()
+rapid_api_keys, rapid_api_index = os.getenv("RAPIDAPI_KEY", "").split(","), 0
 
 
 def refresh_twitter_anon_token():
@@ -81,26 +82,35 @@ def get_search_query(doc_name: str, site: str, keyword: KeywordSet) -> str:
 def google_search(search_term: str, max_terms: int = 5) -> List[GoogleResults]:
     if search_term in cache:
         return cache[search_term][:max_terms]
-    conn = http.client.HTTPSConnection("google-search3.p.rapidapi.com")
-    conn.request(
-        "GET",
-        f"/api/v1/search/q={quote_plus(search_term)}&num=100",
-        headers={
-            "x-rapidapi-key": os.getenv("RAPIDAPI_KEY", ""),
-            "x-rapidapi-host": "google-search3.p.rapidapi.com",
-        },
-    )
-    data = conn.getresponse().read().decode("utf-8")
-    json_data = json.loads(data)
-    if "messages" in json_data:
-        raise ValueError("Error Scrapping Google.. ", json_data["messages"])
 
-    final_search_results: List[GoogleResults] = [
-        {"title": result["title"], "link": result["link"], "description": result["description"]}
-        for result in json_data["results"]
-    ]
-    cache[search_term] = final_search_results
-    return final_search_results[:max_terms]
+    global rapid_api_index
+    err_count = 0
+    while err_count < len(rapid_api_keys):
+        try:
+            conn = http.client.HTTPSConnection("google-search3.p.rapidapi.com")
+            conn.request(
+                "GET",
+                f"/api/v1/search/q={quote_plus(search_term)}&num=100",
+                headers={
+                    "x-rapidapi-key": rapid_api_keys[rapid_api_index % len(rapid_api_keys)],
+                    "x-rapidapi-host": "google-search3.p.rapidapi.com",
+                },
+            )
+            data = conn.getresponse().read().decode("utf-8")
+            json_data = json.loads(data)
+            if "messages" in json_data:
+                raise ValueError("Error Scrapping Google.. ", json_data["messages"])
+            final_search_results: List[GoogleResults] = [
+                {"title": result["title"], "link": result["link"], "description": result["description"]}
+                for result in json_data["results"]
+            ]
+            cache[search_term] = final_search_results
+            return final_search_results[:max_terms]
+        except Exception:
+            print(f"RapidApi Switching key... {rapid_api_index % len(rapid_api_keys)}")
+            rapid_api_index += 1
+            err_count += 1
+    raise ValueError("Error in RapidAPI..")
 
 
 async def twitter_query(query, search_type) -> Union[str, Dict[str, TwitterResults]]:
