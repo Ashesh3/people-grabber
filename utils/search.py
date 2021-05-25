@@ -8,13 +8,21 @@ from sqlitedict import SqliteDict
 
 
 load_dotenv()
+
 cache = SqliteDict(
     "./cache.sqlite",
     encode=lambda obj: sqlite3.Binary(zlib.compress(pickle.dumps(obj, pickle.HIGHEST_PROTOCOL), 9)),
     decode=lambda obj: pickle.loads(zlib.decompress(bytes(obj))),
     autocommit=True,
 )
-linkedin_api = Linkedin(os.getenv("LINKEDIN_EMAIL"), os.getenv("LINKEDIN_PASS"), refresh_cookies=True)
+
+linkedin_usernames = os.getenv("LINKEDIN_EMAIL", "").split(",")
+linkedin_passwords = os.getenv("LINKEDIN_PASS", "").split(",")
+linkedin_apis = []
+for l_user, l_pass in zip(linkedin_usernames, linkedin_passwords):
+    print(f"Loading LinkedinID: {l_user}")
+    linkedin_apis.append(Linkedin(l_user, l_pass, refresh_cookies=True))
+
 twitter_api = twitter.Api(
     consumer_key=os.getenv("TWITTER_API_KEY"),
     consumer_secret=os.getenv("TWITTER_API_SECRET_KEY"),
@@ -23,7 +31,9 @@ twitter_api = twitter.Api(
     sleep_on_rate_limit=True,
 )
 twitter_anon_session = requests.Session()
-rapid_api_keys, rapid_api_index = os.getenv("RAPIDAPI_KEY", "").split(","), 0
+
+rapid_api_keys = os.getenv("RAPIDAPI_KEY", "").split(",")
+rapid_api_index = linkedin_api_index = 0
 
 
 def refresh_twitter_anon_token():
@@ -54,10 +64,23 @@ refresh_twitter_anon_token()
 async def linkedin_search(username: str) -> str:
     if f"linkedin:{username}" in cache:
         return cache[f"linkedin:{username}"]
-    await asyncio.sleep(60)
-    search_result = json.dumps(linkedin_api.get_profile_skills(username)) + json.dumps(linkedin_api.get_profile(username))
-    cache[f"linkedin:{username}"] = search_result
-    return search_result
+    global linkedin_api_index
+    err_count = 0
+    while err_count < len(linkedin_apis):
+        try:
+            linkedin_client = linkedin_apis[linkedin_api_index % len(linkedin_apis)]
+            await asyncio.sleep(60 // len(linkedin_apis))
+            search_result = json.dumps(linkedin_client.get_profile_skills(username)) + json.dumps(
+                linkedin_client.get_profile(username)
+            )
+            cache[f"linkedin:{username}"] = search_result
+            linkedin_api_index += 1
+            return search_result
+        except Exception:
+            print(f"Linkedin Switching Acc... {linkedin_api_index % len(linkedin_apis)}")
+            linkedin_api_index += 1
+            err_count += 1
+    raise ValueError("Error in Linkedin..")
 
 
 def keywords_from_speciality(speciality: str) -> List[KeywordSet]:
@@ -107,8 +130,8 @@ def google_search(search_term: str, max_terms: int = 5) -> List[GoogleResults]:
             cache[search_term] = final_search_results
             return final_search_results[:max_terms]
         except Exception:
-            print(f"RapidApi Switching key... {rapid_api_index % len(rapid_api_keys)}")
             rapid_api_index += 1
+            print(f"RapidApi Switching key... {rapid_api_index % len(rapid_api_keys)}")
             err_count += 1
     raise ValueError("Error in RapidAPI..")
 
