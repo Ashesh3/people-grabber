@@ -3,5 +3,4 @@ styleframe==4.0.0
 pandas==1.2.4
 requests==2.25.1
 python-dotenv==0.17.1
-python-twitter==3.5
 sqlitedict==1.7.0

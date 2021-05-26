@@ -1,10 +1,11 @@
-import http.client, os, json, re, requests, asyncio, zlib, pickle, sqlite3, twitter
+import http.client, os, json, re, requests, asyncio, zlib, pickle, sqlite3
 from typing import List, Dict, Union
 from urllib.parse import quote_plus
 from utils.types import *
 from dotenv import load_dotenv
 from linkedin_api import Linkedin
 from sqlitedict import SqliteDict
+from requests.cookies import cookiejar_from_dict
 
 
 load_dotenv()
@@ -16,20 +17,27 @@ cache = SqliteDict(
     autocommit=True,
 )
 
-linkedin_usernames = os.getenv("LINKEDIN_EMAIL", "").split(",")
-linkedin_passwords = os.getenv("LINKEDIN_PASS", "").split(",")
+linkedin_emails = os.getenv("LINKEDIN_EMAILS", "").split(",")
+linkedin_jsess = os.getenv("LINKEDIN_JSESSIONID", "").split(",")
+linkedin_li_at = os.getenv("LINKEDIN_LI_AT", "").split(",")
 linkedin_apis = []
-for l_user, l_pass in zip(linkedin_usernames, linkedin_passwords):
-    print(f"Loading LinkedinID: {l_user}")
-    linkedin_apis.append(Linkedin(l_user, l_pass, refresh_cookies=True))
+for l_email, l_jsess, l_li_at in zip(linkedin_emails, linkedin_jsess, linkedin_li_at):
+    print(f"Loading LinkedinID: {l_email}")
+    linkedin_apis.append(
+        Linkedin(
+            "",
+            "",
+            cookies=cookiejar_from_dict(
+                {
+                    "liap": "true",
+                    "JSESSIONID": l_jsess,
+                    "li_at": l_li_at,
+                }
+            ),
+        )
+    )
+    print("Loaded:", linkedin_apis[-1].get_user_profile()["miniProfile"]["firstName"])
 
-twitter_api = twitter.Api(
-    consumer_key=os.getenv("TWITTER_API_KEY"),
-    consumer_secret=os.getenv("TWITTER_API_SECRET_KEY"),
-    access_token_key=os.getenv("TWITTER_ACCESS_TOKEN"),
-    access_token_secret=os.getenv("TWITTER_ACCESS_TOKEN_SECRET"),
-    sleep_on_rate_limit=True,
-)
 twitter_anon_session = requests.Session()
 
 rapid_api_keys = os.getenv("RAPIDAPI_KEY", "").split(",")
@@ -68,17 +76,16 @@ async def linkedin_search(username: str) -> str:
     err_count = 0
     while err_count < len(linkedin_apis):
         try:
+            linkedin_api_index += 1
             linkedin_client = linkedin_apis[linkedin_api_index % len(linkedin_apis)]
-            await asyncio.sleep(60 // len(linkedin_apis))
+            await asyncio.sleep(60)
             search_result = json.dumps(linkedin_client.get_profile_skills(username)) + json.dumps(
                 linkedin_client.get_profile(username)
             )
             cache[f"linkedin:{username}"] = search_result
-            linkedin_api_index += 1
             return search_result
         except Exception:
-            print(f"Linkedin Switching Acc... {linkedin_api_index % len(linkedin_apis)}")
-            linkedin_api_index += 1
+            print(f"Linkedin Switching Acc to {((linkedin_api_index+1) % len(linkedin_apis))+1} ...")
             err_count += 1
     raise ValueError("Error in Linkedin..")
 
@@ -136,21 +143,43 @@ def google_search(search_term: str, max_terms: int = 5) -> List[GoogleResults]:
     raise ValueError("Error in RapidAPI..")
 
 
-async def twitter_query(query, search_type) -> Union[str, Dict[str, TwitterResults]]:
+def get_twitter_likes(user_id: str):
+    response = requests.get(
+        "https://twitter.com/i/api/graphql/OU4zjDOFfM9ZHq2aTjUNCA/Likes",
+        headers={
+            "Host": "twitter.com",
+            "X-Csrf-Token": os.getenv("TWITTER_X_CSRF_TOKEN", ""),
+            "Authorization": f"Bearer {os.getenv('TWITTER_AUTHORIZATION', '')}",
+            "Content-Type": "application/json",
+            "X-Twitter-Auth-Type": "OAuth2Session",
+            "X-Twitter-Active-User": "yes",
+            "Accept": "*/*",
+            "Referer": "https://twitter.com/BrentToderian/likes",
+            "Accept-Language": "en-US,en;q=0.9",
+        },
+        params=(
+            (
+                "variables",
+                '{"userId":"'
+                + user_id
+                + '","count":20,"withHighlightedLabel":false,"withTweetQuoteCount":false,"includePromotedContent":false,"withTweetResult":false,"withReactions":false,"withUserResults":false,"withClientEventToken":false,"withBirdwatchNotes":false,"withBirdwatchPivots":false,"withVoice":false,"withNonLegacyCard":true}',
+            ),
+        ),
+        cookies={
+            "auth_token": os.getenv("TWITTER_AUTH_TOKEN", ""),
+            "ct0": os.getenv("TWITTER_CT0", ""),
+        },
+    )
+    return response.text
+
+
+def twitter_query(query, search_type) -> Union[str, Dict[str, TwitterResults]]:
     if f"{query}:{search_type}" in cache:
         return cache[f"{query}:{search_type}"]
     if search_type == "likes":
-        await asyncio.sleep(10)
-        final_res = ""
-        query_result = []
-        try:
-            query_result = twitter_api.GetFavorites(screen_name=query)
-        except twitter.TwitterError as e:
-            print(f"{query}: {e}")
-        if query_result:
-            final_res = json.dumps([res._json for res in query_result])
-        cache[f"{query}:{search_type}"] = final_res
-        return final_res
+        query_result = get_twitter_likes(query)
+        cache[f"{query}:{search_type}"] = query_result
+        return query_result
     param = {
         "include_profile_interstitial_type": "1",
         "include_blocking": "1",

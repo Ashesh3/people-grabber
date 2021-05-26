@@ -9,13 +9,13 @@ class Twitter:
     async def search(doc_name: str, speciality: str, max_terms: int = 10) -> List[ModuleResults]:
         print(f"Searching: Twitter")
         search_hits: List[ModuleResults] = []
-        users: Dict[str, TwitterResults] = await twitter_query(doc_name.title(), "users")  # type:ignore
+        users: Dict[str, TwitterResults] = twitter_query(doc_name.title(), "users")  # type:ignore
         for user_key in list(users.keys())[:10]:
             if doc_name.split(" ")[0].lower() not in users[user_key]["name"].lower():
                 continue
             screen_name = users[user_key]["screen_name"]
             full_profile = users[user_key]["description"]
-            full_profile += str(await twitter_query(screen_name, "likes"))
+            full_profile += str(twitter_query(user_key, "likes"))
             all_keywords: List[str] = []
             for keyword_set in keywords_from_speciality(speciality):
                 all_keywords.extend(keyword_set["keywords"])
