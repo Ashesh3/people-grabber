@@ -7,9 +7,10 @@ from utils.search import keywords_from_speciality
 class Twitter:
     @staticmethod
     async def search(doc_name: str, speciality: str, max_terms: int = 10) -> List[ModuleResults]:
-        print(f"Searching: Twitter")
+        print(f"[Twitter] Searching")
         search_hits: List[ModuleResults] = []
         users: Dict[str, TwitterResults] = twitter_query(doc_name.title(), "users")  # type:ignore
+        print(f"[Twitter] {len(users)} result(s)")
         for user_key in list(users.keys())[:10]:
             if doc_name.split(" ")[0].lower() not in users[user_key]["name"].lower():
                 continue
@@ -26,5 +27,5 @@ class Twitter:
             confidence = round((matched_keywords / total_keywords) * 100, 2)
             if confidence > 0:
                 search_hits.append({"link": f"https://twitter.com/{screen_name}", "confidence": confidence})
-
+        print("[Twitter] Done")
         return sorted(search_hits, key=lambda x: x["confidence"], reverse=True)[:max_terms]

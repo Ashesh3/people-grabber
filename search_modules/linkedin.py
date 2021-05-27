@@ -7,7 +7,7 @@ class Linkedin:
     @staticmethod
     async def search(doc_name: str, speciality: str, max_terms: int = 10) -> List[ModuleResults]:
         doc_name = doc_name.lower()
-        print(f"Searching: Linkedin")
+        print(f"[Linkedin] Starting")
 
         search_hits: List[ModuleResults] = []
 
@@ -15,7 +15,7 @@ class Linkedin:
         for keyword_set in keywords_sets:
             search_query = get_search_query(doc_name, "www.linkedin.com", keyword_set)
             search_results = google_search(search_query)
-
+            print(f"[Linkedin] Google Search: {len(search_results)} result(s)")
             for result in search_results:
                 if "pub/dir" in result["link"] or "linkedin.com/in/" not in result["link"]:
                     continue
@@ -26,5 +26,5 @@ class Linkedin:
                 confidence = round((matched_keywords / total_keywords) * 100, 2)
                 if confidence > 0:
                     search_hits.append({"link": result["link"], "confidence": confidence})
-
+        print("[Linkedin] Done")
         return sorted(search_hits, key=lambda x: x["confidence"], reverse=True)[:max_terms]

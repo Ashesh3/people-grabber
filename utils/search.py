@@ -77,8 +77,11 @@ async def linkedin_search(username: str) -> str:
     while err_count < len(linkedin_apis):
         try:
             linkedin_api_index += 1
-            linkedin_client = linkedin_apis[linkedin_api_index % len(linkedin_apis)]
-            await asyncio.sleep(randint(40, 80))
+            next_index = linkedin_api_index % len(linkedin_apis)
+            linkedin_client = linkedin_apis[next_index]
+            delay_sleep = randint(20, 60)
+            print(f"[Linkedin] Scraping [{username}] [{linkedin_api_index}] [{next_index+1}] [{delay_sleep}s]")
+            await asyncio.sleep(delay_sleep)
             search_result = json.dumps(linkedin_client.get_profile_skills(username)) + json.dumps(
                 linkedin_client.get_profile(username)
             )
