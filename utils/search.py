@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from linkedin_api import Linkedin
 from sqlitedict import SqliteDict
 from requests.cookies import cookiejar_from_dict
-
+from random import randint
 
 load_dotenv()
 
@@ -78,7 +78,7 @@ async def linkedin_search(username: str) -> str:
         try:
             linkedin_api_index += 1
             linkedin_client = linkedin_apis[linkedin_api_index % len(linkedin_apis)]
-            await asyncio.sleep(60)
+            await asyncio.sleep(randint(40, 80))
             search_result = json.dumps(linkedin_client.get_profile_skills(username)) + json.dumps(
                 linkedin_client.get_profile(username)
             )
