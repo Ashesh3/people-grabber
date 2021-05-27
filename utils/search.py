@@ -1,4 +1,4 @@
-import http.client, os, json, re, requests, asyncio, zlib, pickle, sqlite3
+import http.client, json, re, requests, asyncio, zlib, pickle, sqlite3
 from typing import List, Dict, Union
 from urllib.parse import quote_plus
 from utils.types import *
@@ -7,6 +7,7 @@ from linkedin_api import Linkedin
 from sqlitedict import SqliteDict
 from requests.cookies import cookiejar_from_dict
 from random import randint
+from utils.config import config
 
 load_dotenv()
 
@@ -17,12 +18,9 @@ cache = SqliteDict(
     autocommit=True,
 )
 
-linkedin_emails = os.getenv("LINKEDIN_EMAILS", "").split(",")
-linkedin_jsess = os.getenv("LINKEDIN_JSESSIONID", "").split(",")
-linkedin_li_at = os.getenv("LINKEDIN_LI_AT", "").split(",")
 linkedin_apis = []
-for l_email, l_jsess, l_li_at in zip(linkedin_emails, linkedin_jsess, linkedin_li_at):
-    print(f"Loading LinkedinID: {l_email}")
+for linkedin_acc in config["LINKEDIN_ACCS"]:
+    print(f"Loading LinkedinID: {linkedin_acc['email']}")
     linkedin_apis.append(
         Linkedin(
             "",
@@ -30,8 +28,8 @@ for l_email, l_jsess, l_li_at in zip(linkedin_emails, linkedin_jsess, linkedin_l
             cookies=cookiejar_from_dict(
                 {
                     "liap": "true",
-                    "JSESSIONID": l_jsess,
-                    "li_at": l_li_at,
+                    "JSESSIONID": linkedin_acc["jsessionid"],
+                    "li_at": linkedin_acc["li_at"],
                 }
             ),
         )
@@ -40,7 +38,7 @@ for l_email, l_jsess, l_li_at in zip(linkedin_emails, linkedin_jsess, linkedin_l
 
 twitter_anon_session = requests.Session()
 
-rapid_api_keys = os.getenv("RAPIDAPI_KEY", "").split(",")
+rapid_api_keys = config["RAPIDAPI_KEYS"]
 rapid_api_index = linkedin_api_index = 0
 
 
@@ -151,8 +149,8 @@ def get_twitter_likes(user_id: str):
         "https://twitter.com/i/api/graphql/OU4zjDOFfM9ZHq2aTjUNCA/Likes",
         headers={
             "Host": "twitter.com",
-            "X-Csrf-Token": os.getenv("TWITTER_X_CSRF_TOKEN", ""),
-            "Authorization": f"Bearer {os.getenv('TWITTER_AUTHORIZATION', '')}",
+            "X-Csrf-Token": config["TWITTER_X_CSRF_TOKEN"],
+            "Authorization": f"Bearer {config['TWITTER_AUTHORIZATION']}",
             "Content-Type": "application/json",
             "X-Twitter-Auth-Type": "OAuth2Session",
             "X-Twitter-Active-User": "yes",
@@ -169,8 +167,8 @@ def get_twitter_likes(user_id: str):
             ),
         ),
         cookies={
-            "auth_token": os.getenv("TWITTER_AUTH_TOKEN", ""),
-            "ct0": os.getenv("TWITTER_X_CSRF_TOKEN", ""),
+            "auth_token": config["TWITTER_AUTH_TOKEN"],
+            "ct0": config["TWITTER_X_CSRF_TOKEN"],
         },
     )
     return response.text

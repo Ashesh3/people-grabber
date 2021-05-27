@@ -1,0 +1,25 @@
+{
+    "SEARCH_MODULES": [
+        "Linkedin",
+        "Twitter"
+    ],
+    "LINKEDIN_ACCS": [
+        {
+            "email": "a@yahoo.com",
+            "jsessionid": "ajax:123",
+            "li_at": "abcd"
+        },
+        {
+            "email": "b@yahoo.com",
+            "jsessionid": "ajax:456",
+            "li_at": "efgh"
+        }
+    ],
+    "RAPIDAPI_KEYS": [
+        "a",
+        "b"
+    ],
+    "TWITTER_X_CSRF_TOKEN": "token",
+    "TWITTER_AUTHORIZATION": "auth",
+    "TWITTER_AUTH_TOKEN": "auth_token"
+}
