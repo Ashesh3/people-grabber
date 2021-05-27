@@ -18,6 +18,7 @@ class DataReader:
                 "facebookUrl": str,
             },
         )
+        self._size = len(self._df.index)
 
     def write_data(self, row_no: int, site_name: str, data: List[ModuleResults]):
         if site_name not in ["linkedin", "twitter", "youtube", "reddit", "instagram", "reddit"]:

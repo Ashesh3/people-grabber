@@ -225,3 +225,29 @@ def twitter_query(query, search_type) -> Union[str, Dict[str, TwitterResults]]:
         return final_search_results
     else:
         return {}
+
+
+def facebook_search(fb_link: str):
+    if f"facebook:{fb_link}" in cache:
+        return cache[f"facebook:{fb_link}"]
+    acc_data = requests.get(
+        fb_link,
+        headers={
+            "authority": "www.facebook.com",
+            "pragma": "no-cache",
+            "cache-control": "no-cache",
+            "sec-ch-ua": '" Not A;Brand";v="99", "Chromium";v="90", "Microsoft Edge";v="90"',
+            "sec-ch-ua-mobile": "?0",
+            "upgrade-insecure-requests": "1",
+            "User-Agent": "NokiaC3-00/5.0 (07.20) Profile/MIDP-2.1 Configuration/CLDC-1.1 Mozilla/5.0 AppleWebKit/420+ (KHTML, like Gecko) Safari/420+",
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+            "sec-fetch-site": "none",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-user": "?1",
+            "sec-fetch-dest": "document",
+            "accept-language": "en-US,en;q=0.9",
+            "cookie": "datr=AG2vYDjuin9s_58hMyTbvceY; dpr=1.25",
+        },
+    ).text
+    cache[f"facebook:{fb_link}"] = acc_data
+    return acc_data
