@@ -167,7 +167,7 @@ def get_twitter_likes(user_id: str):
         ),
         cookies={
             "auth_token": os.getenv("TWITTER_AUTH_TOKEN", ""),
-            "ct0": os.getenv("TWITTER_CT0", ""),
+            "ct0": os.getenv("TWITTER_X_CSRF_TOKEN", ""),
         },
     )
     return response.text
