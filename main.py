@@ -1,5 +1,6 @@
 from search_modules.twitter import Twitter
 from search_modules.linkedin import Linkedin
+from os import system
 from utils.data import DataReader
 from search_modules import *
 import asyncio

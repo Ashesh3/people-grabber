@@ -1,7 +1,6 @@
+linkedin-api~=2.0.0a
 styleframe==4.0.0
 pandas==1.2.4
 requests==2.25.1
 python-dotenv==0.17.1
 sqlitedict==1.7.0
-selenium==3.141.0
-scrape-linkedin @ git+git://github.com/austinoboyle/scrape-linkedin-selenium.git@4107ba3113fed3d8a5ef084c9f709fa421f9244c

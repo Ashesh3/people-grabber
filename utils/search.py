@@ -6,9 +6,7 @@ from dotenv import load_dotenv
 from linkedin_api import Linkedin
 from sqlitedict import SqliteDict
 from requests.cookies import cookiejar_from_dict
-from scrape_linkedin import ProfileScraper
-from selenium.webdriver import Firefox
-from selenium.webdriver.firefox.options import Options
+
 
 load_dotenv()
 
@@ -19,14 +17,26 @@ cache = SqliteDict(
     autocommit=True,
 )
 
-
-linkedin_cookies = os.getenv("LINKEDIN_LI_AT", "").split(",")
-options = Options()
-options.headless = True
+linkedin_emails = os.getenv("LINKEDIN_EMAILS", "").split(",")
+linkedin_jsess = os.getenv("LINKEDIN_JSESSIONID", "").split(",")
+linkedin_li_at = os.getenv("LINKEDIN_LI_AT", "").split(",")
 linkedin_apis = []
-for linkedin_cookie in linkedin_cookies:
-    linkedin_apis.append(ProfileScraper(cookie=linkedin_cookie, driver=Firefox, driver_options={"options": options}))
-
+for l_email, l_jsess, l_li_at in zip(linkedin_emails, linkedin_jsess, linkedin_li_at):
+    print(f"Loading LinkedinID: {l_email}")
+    linkedin_apis.append(
+        Linkedin(
+            "",
+            "",
+            cookies=cookiejar_from_dict(
+                {
+                    "liap": "true",
+                    "JSESSIONID": l_jsess,
+                    "li_at": l_li_at,
+                }
+            ),
+        )
+    )
+    print("Loaded:", linkedin_apis[-1].get_user_profile()["miniProfile"]["firstName"])
 
 twitter_anon_session = requests.Session()
 
@@ -69,13 +79,15 @@ async def linkedin_search(username: str) -> str:
             linkedin_api_index += 1
             linkedin_client = linkedin_apis[linkedin_api_index % len(linkedin_apis)]
             await asyncio.sleep(60)
-            search_result = json.dumps(linkedin_client.scrape(user=username).to_dict())
+            search_result = json.dumps(linkedin_client.get_profile_skills(username)) + json.dumps(
+                linkedin_client.get_profile(username)
+            )
             cache[f"linkedin:{username}"] = search_result
             return search_result
-        except Exception as e:
-            print(f"Linkedin Switching Acc to {((linkedin_api_index+1) % len(linkedin_apis))+1} ...{e}")
+        except Exception:
+            print(f"Linkedin Switching Acc to {((linkedin_api_index+1) % len(linkedin_apis))+1} ...")
             err_count += 1
-    raise RuntimeError("Error in Linkedin..")
+    raise ValueError("Error in Linkedin..")
 
 
 def keywords_from_speciality(speciality: str) -> List[KeywordSet]:
@@ -155,7 +167,7 @@ def get_twitter_likes(user_id: str):
         ),
         cookies={
             "auth_token": os.getenv("TWITTER_AUTH_TOKEN", ""),
-            "ct0": os.getenv("TWITTER_X_CSRF_TOKEN", ""),
+            "ct0": os.getenv("TWITTER_CT0", ""),
         },
     )
     return response.text
