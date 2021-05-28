@@ -21,20 +21,26 @@ cache = SqliteDict(
 linkedin_apis = []
 for linkedin_acc in config["LINKEDIN_ACCS"]:
     print(f"Loading LinkedinID: {linkedin_acc['email']}")
-    linkedin_apis.append(
-        Linkedin(
-            "",
-            "",
-            cookies=cookiejar_from_dict(
-                {
-                    "liap": "true",
-                    "JSESSIONID": linkedin_acc["jsessionid"],
-                    "li_at": linkedin_acc["li_at"],
-                }
-            ),
+    try:
+        linkedin_apis.append(
+            Linkedin(
+                "",
+                "",
+                cookies=cookiejar_from_dict(
+                    {
+                        "liap": "true",
+                        "JSESSIONID": linkedin_acc["jsessionid"],
+                        "li_at": linkedin_acc["li_at"],
+                    }
+                ),
+            )
         )
-    )
-    print("Loaded:", linkedin_apis[-1].get_user_profile()["miniProfile"]["firstName"])
+        print("Loaded:", linkedin_apis[-1].get_user_profile()["miniProfile"]["firstName"])
+    except Exception as e:
+        print(f'Failed to load {linkedin_acc["email"]} {e}')
+
+if len(linkedin_apis) == 0:
+    raise RuntimeError("No valid Linkedin account found.")
 
 twitter_anon_session = requests.Session()
 
