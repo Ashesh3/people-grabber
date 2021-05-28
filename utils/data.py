@@ -21,7 +21,7 @@ class DataReader:
         self._size = len(self._df.index)
 
     def write_data(self, row_no: int, site_name: str, data: List[ModuleResults]):
-        if site_name not in ["linkedin", "twitter", "youtube", "reddit", "instagram", "reddit"]:
+        if site_name not in ["linkedin", "twitter", "youtube", "facebook", "instagram", "reddit"]:
             raise ValueError("Invalid Sitename")
 
         self._df.at[row_no, f"{site_name}Url"] = ", \n".join([f'{result["confidence"]}:{result["link"]}' for result in data])
