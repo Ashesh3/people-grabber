@@ -1,6 +1,9 @@
 from typing import List
-from utils.search import google_search, get_search_query, keywords_from_speciality, facebook_search
+from utils.search import google_search, get_search_query, keywords_from_speciality, facebook_search, get_facebook_username
 from utils.types import *
+import warnings
+
+warnings.filterwarnings("ignore")
 
 
 class Facebook:
@@ -16,8 +19,10 @@ class Facebook:
         for keyword_set in keywords_from_speciality(speciality):
             all_keywords.extend(keyword_set["keywords"])
         for result in search_results:
+            if any([x in result["link"] for x in ["/public", "/directory/", "/videos/", "/pages/"]]):
+                continue
             total_keywords = len(all_keywords)
-            facebook_profile = facebook_search(result["link"])
+            facebook_profile = facebook_search(get_facebook_username(result["link"]))
             result_content = (result["title"] + result["description"]).lower() + facebook_profile.lower()
             matched_keywords = sum([keyword.lower() in result_content for keyword in all_keywords])
             confidence = round((matched_keywords / total_keywords) * 100, 2)

@@ -8,6 +8,7 @@ from sqlitedict import SqliteDict
 from requests.cookies import cookiejar_from_dict
 from random import randint
 from utils.config import config
+from facebook_scraper import get_profile, get_posts
 
 load_dotenv()
 
@@ -267,27 +268,22 @@ def twitter_query(query, search_type) -> Union[str, Dict[str, TwitterResults]]:
         return {}
 
 
-def facebook_search(fb_link: str):
-    if f"facebook:{fb_link}" in cache:
-        return cache[f"facebook:{fb_link}"]
-    acc_data = requests.get(
-        fb_link,
-        headers={
-            "authority": "www.facebook.com",
-            "pragma": "no-cache",
-            "cache-control": "no-cache",
-            "sec-ch-ua": '" Not A;Brand";v="99", "Chromium";v="90", "Microsoft Edge";v="90"',
-            "sec-ch-ua-mobile": "?0",
-            "upgrade-insecure-requests": "1",
-            "User-Agent": "NokiaC3-00/5.0 (07.20) Profile/MIDP-2.1 Configuration/CLDC-1.1 Mozilla/5.0 AppleWebKit/420+ (KHTML, like Gecko) Safari/420+",
-            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
-            "sec-fetch-site": "none",
-            "sec-fetch-mode": "navigate",
-            "sec-fetch-user": "?1",
-            "sec-fetch-dest": "document",
-            "accept-language": "en-US,en;q=0.9",
-            "cookie": "datr=AG2vYDjuin9s_58hMyTbvceY; dpr=1.25",
-        },
-    ).text
-    cache[f"facebook:{fb_link}"] = acc_data
+def facebook_search(fb_id: str):
+    if f"facebook:{fb_id}" in cache:
+        return cache[f"facebook:{fb_id}"]
+    acc_data = ""
+    try:
+        acc_data = json.dumps(get_profile(fb_id, cookies=cookiejar_from_dict(config["FACEBOOK_COOKIES"])))
+        acc_data += json.dumps(list(get_posts(fb_id, pages=1, options={"allow_extra_requests": False})), default=str)
+        print(f"[Facebook] Scraping [{fb_id}]")
+    except Exception as e:
+        print(f"[Facebook] [{fb_id}] [{e}]")
+    cache[f"facebook:{fb_id}"] = acc_data
     return acc_data
+
+
+def get_facebook_username(fb_link):
+    prefix = "/"
+    if "/people/" in fb_link:
+        prefix = "/people/"
+    return fb_link.split(f".com{prefix}")[1].split("/")[0]

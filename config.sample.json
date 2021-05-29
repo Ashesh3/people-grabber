@@ -21,5 +21,8 @@
     ],
     "TWITTER_X_CSRF_TOKEN": "token",
     "TWITTER_AUTHORIZATION": "auth",
-    "TWITTER_AUTH_TOKEN": "auth_token"
+    "TWITTER_AUTH_TOKEN": "auth_token",
+    "FACEBOOK_COOKIES": {
+        "cookie_name": "cookie_value"
+    }
 }
