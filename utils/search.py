@@ -17,13 +17,12 @@ cache = SqliteDict(
     decode=lambda obj: pickle.loads(zlib.decompress(bytes(obj))),
     autocommit=True,
 )
-
 linkedin_apis = []
-for linkedin_acc in config["LINKEDIN_ACCS"]:
-    print(f"Loading LinkedinID: {linkedin_acc['email']}")
-    try:
-        linkedin_apis.append(
-            Linkedin(
+if "Linkedin" in config["SEARCH_MODULES"]:
+    for linkedin_acc in config["LINKEDIN_ACCS"]:
+        print(f"Loading LinkedinID: {linkedin_acc['email']}")
+        try:
+            account = Linkedin(
                 "",
                 "",
                 cookies=cookiejar_from_dict(
@@ -34,15 +33,16 @@ for linkedin_acc in config["LINKEDIN_ACCS"]:
                     }
                 ),
             )
-        )
-        print("Loaded:", linkedin_apis[-1].get_user_profile()["miniProfile"]["firstName"])
-    except Exception as e:
-        print(f'Failed to load {linkedin_acc["email"]} {e}')
+            linkedin_apis.append(account)
+            print("Loaded:", linkedin_apis[-1].get_user_profile()["miniProfile"]["firstName"])
+        except Exception as e:
+            print(f'Failed to load {linkedin_acc["email"]} {e}')
 
-if len(linkedin_apis) == 0:
-    raise RuntimeError("No valid Linkedin account found.")
+    if len(linkedin_apis) == 0:
+        raise RuntimeError("No valid Linkedin account found.")
 
-twitter_anon_session = requests.Session()
+if "Twitter" in config["SEARCH_MODULES"]:
+    twitter_anon_session = requests.Session()
 
 rapid_api_keys = config["RAPIDAPI_KEYS"]
 rapid_api_index = linkedin_api_index = 0
@@ -70,7 +70,8 @@ def refresh_twitter_anon_token():
     twitter_anon_session.headers.update({"x-guest-token": guest_token})
 
 
-refresh_twitter_anon_token()
+if "Twitter" in config["SEARCH_MODULES"]:
+    refresh_twitter_anon_token()
 
 
 async def linkedin_search(username: str) -> str:
@@ -103,12 +104,47 @@ def keywords_from_speciality(speciality: str) -> List[KeywordSet]:
             {"keywords": ["Registered Nurse", "Oncology"], "operator": "AND"},
             {"keywords": ["Nurse", "Oncology", " RN", "Cancer"], "operator": "OR"},
         ]
+    if speciality == "Pharmacist - Oncology":
+        return [
+            {"keywords": ["Pharmacist", "Oncology"], "operator": "AND"},
+            {"keywords": ["Pharmacist", "Oncology", " Pharmacy", "Cancer"], "operator": "OR"},
+        ]
+    if speciality == "Internal Medicine - Hematology & Oncology":
+        return [
+            {"keywords": ["Internal Medicine", "Hematology", "Oncology"], "operator": "AND"},
+            {
+                "keywords": ["Internal Medicine", "Hematology", " Hematologist", "Oncologist", "Oncology", "Cancer"],
+                "operator": "OR",
+            },
+        ]
+    if speciality == "Internal Medicine - Medical Oncology":
+        return [
+            {"keywords": ["Internal Medicine", "Medical Oncology"], "operator": "AND"},
+            {
+                "keywords": ["Internal Medicine", "Oncologist", "Oncology", "Cancer"],
+                "operator": "OR",
+            },
+        ]
+    if speciality == "Radiology - Radiation Oncology":
+        return [
+            {"keywords": ["Radiation Oncology"], "operator": ""},
+            {
+                "keywords": ["Radiation", "Oncologist", "Oncology", "Cancer", "Radiology"],
+                "operator": "OR",
+            },
+        ]
+    if speciality == "Surgery - Surgical Oncology":
+        return [
+            {"keywords": ["Surgical Oncology"], "operator": ""},
+            {
+                "keywords": ["Oncologist", "Oncology", "Cancer", "Surgery", "Surgical"],
+                "operator": "OR",
+            },
+        ]
     if speciality in ["NEPHROLOGY", "PEDIATRIC NEPHROLOGY"]:
         return [
             {"keywords": ["nephrology", "nephrologist", "kidney", "renal", "nephro"], "operator": "OR"},
         ]
-    # todo: add rest of keyword phases
-
     raise ValueError("Invalid Speciality")
 
 
