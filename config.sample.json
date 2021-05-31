@@ -14,5 +14,11 @@
     "TWITTER_AUTH_TOKEN": "auth_token",
     "FACEBOOK_COOKIES": {
         "cookie_name": "cookie_value"
+    },
+    "DOCUMENT": {
+        "INPUT": "inp.xlsx",
+        "OUTPUT": "out.xlsx",
+        "START": 0,
+        "STOP": 100
     }
 }

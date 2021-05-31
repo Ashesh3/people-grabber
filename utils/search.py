@@ -1,4 +1,4 @@
-import http.client, json, re, requests, asyncio, zlib, pickle, sqlite3
+import http.client, json, re, requests, zlib, pickle, sqlite3
 from typing import List, Dict, Union
 from urllib.parse import quote_plus
 from utils.types import *

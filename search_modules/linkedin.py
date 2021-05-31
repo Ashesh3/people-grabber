@@ -7,7 +7,7 @@ class Linkedin:
     @staticmethod
     async def search(doc_name: str, speciality: str, max_terms: int = 10) -> List[ModuleResults]:
         doc_name = doc_name.lower()
-        print(f"[Linkedin] Starting")
+        print(f"[Linkedin] Searching")
 
         search_hits: List[ModuleResults] = []
 
