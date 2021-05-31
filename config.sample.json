@@ -3,18 +3,8 @@
         "Linkedin",
         "Twitter"
     ],
-    "LINKEDIN_ACCS": [
-        {
-            "email": "a@yahoo.com",
-            "jsessionid": "ajax:123",
-            "li_at": "abcd"
-        },
-        {
-            "email": "b@yahoo.com",
-            "jsessionid": "ajax:456",
-            "li_at": "efgh"
-        }
-    ],
+    "CACHE_PATH": "./abc.sqlite",
+    "LINKEDIN_API_KEY": "key",
     "RAPIDAPI_KEYS": [
         "a",
         "b"

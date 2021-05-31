@@ -13,40 +13,17 @@ from facebook_scraper import get_profile, get_posts
 load_dotenv()
 
 cache = SqliteDict(
-    "./cache.sqlite",
+    config["CACHE_PATH"],
     encode=lambda obj: sqlite3.Binary(zlib.compress(pickle.dumps(obj, pickle.HIGHEST_PROTOCOL), 9)),
     decode=lambda obj: pickle.loads(zlib.decompress(bytes(obj))),
     autocommit=True,
 )
-linkedin_apis = []
-if "Linkedin" in config["SEARCH_MODULES"]:
-    for linkedin_acc in config["LINKEDIN_ACCS"]:
-        print(f"Loading LinkedinID: {linkedin_acc['email']}")
-        try:
-            account = Linkedin(
-                "",
-                "",
-                cookies=cookiejar_from_dict(
-                    {
-                        "liap": "true",
-                        "JSESSIONID": linkedin_acc["jsessionid"],
-                        "li_at": linkedin_acc["li_at"],
-                    }
-                ),
-            )
-            linkedin_apis.append(account)
-            print("Loaded:", linkedin_apis[-1].get_user_profile()["miniProfile"]["firstName"])
-        except Exception as e:
-            print(f'Failed to load {linkedin_acc["email"]} {e}')
-
-    if len(linkedin_apis) == 0:
-        raise RuntimeError("No valid Linkedin account found.")
 
 if "Twitter" in config["SEARCH_MODULES"]:
     twitter_anon_session = requests.Session()
 
 rapid_api_keys = config["RAPIDAPI_KEYS"]
-rapid_api_index = linkedin_api_index = 0
+rapid_api_index = 0
 
 
 def refresh_twitter_anon_token():
@@ -78,25 +55,18 @@ if "Twitter" in config["SEARCH_MODULES"]:
 async def linkedin_search(username: str) -> str:
     if f"linkedin:{username}" in cache:
         return cache[f"linkedin:{username}"]
-    global linkedin_api_index
-    err_count = 0
-    while err_count < len(linkedin_apis):
-        try:
-            linkedin_api_index += 1
-            next_index = linkedin_api_index % len(linkedin_apis)
-            linkedin_client = linkedin_apis[next_index]
-            delay_sleep = randint(20, 60)
-            print(f"[Linkedin] Scraping [{username}] [{linkedin_api_index}] [{next_index+1}] [{delay_sleep}s]")
-            await asyncio.sleep(delay_sleep)
-            search_result = json.dumps(linkedin_client.get_profile_skills(username)) + json.dumps(
-                linkedin_client.get_profile(username)
-            )
-            cache[f"linkedin:{username}"] = search_result
-            return search_result
-        except Exception:
-            print(f"Linkedin Switching Acc to {((linkedin_api_index+1) % len(linkedin_apis))+1} ...")
-            err_count += 1
-    raise ValueError("Error in Linkedin..")
+
+    print(f"[Linkedin] Scraping [{username}]")
+    header_dic = {"Authorization": "Bearer " + config["LINKEDIN_API_KEY"]}
+    params = {
+        "url": f"https://www.linkedin.com/in/{username}",
+    }
+    response = requests.get("https://nubela.co/proxycurl/api/v2/linkedin", params=params, headers=header_dic)
+    search_result = response.text
+    if response.status_code != 200:
+        raise RuntimeError(f"[Linkedin] Error Scraping [{response.status_code}] [{search_result}]")
+    cache[f"linkedin:{username}"] = search_result
+    return search_result
 
 
 def keywords_from_speciality(speciality: str) -> List[KeywordSet]:

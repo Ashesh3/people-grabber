@@ -1,5 +1,4 @@
 from typing import List
-from search_modules import facebook
 from search_modules.twitter import Twitter
 from search_modules.linkedin import Linkedin
 from search_modules.facebook import Facebook
@@ -16,7 +15,7 @@ doc_data = DataReader("doc_data.xlsx", "doc_data_output.xlsx")
 
 async def main():
     try:
-        for i, row in doc_data.get_rows():
+        for i, row in doc_data.get_rows(2601 - 2):
             doc_name = f"{row['fullName'].split('-')[-1]}"  # doc_name = f"{row['first']} {row['last'].split('-')[-1]}"
             doc_speciality = row["specialty"]
             percent_done = (i / doc_data._size) * 100
