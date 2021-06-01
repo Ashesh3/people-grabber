@@ -70,17 +70,14 @@ async def linkedin_search(username: str) -> str:
 def keywords_from_speciality(speciality: str) -> List[KeywordSet]:
     if speciality == "Registered Nurse - Oncology":
         return [
-            {"keywords": ["Registered Nurse", "Oncology"], "operator": "AND"},
-            {"keywords": ["Nurse", "Oncology", " RN", "Cancer"], "operator": "OR"},
+            {"keywords": ["Registered Nurse", "Nurse", "Oncology", " RN", "Cancer"], "operator": "OR"},
         ]
     if speciality == "Pharmacist - Oncology":
         return [
-            {"keywords": ["Pharmacist", "Oncology"], "operator": "AND"},
             {"keywords": ["Pharmacist", "Oncology", " Pharmacy", "Cancer"], "operator": "OR"},
         ]
     if speciality == "Internal Medicine - Hematology & Oncology":
         return [
-            {"keywords": ["Internal Medicine", "Hematology", "Oncology"], "operator": "AND"},
             {
                 "keywords": ["Internal Medicine", "Hematology", " Hematologist", "Oncologist", "Oncology", "Cancer"],
                 "operator": "OR",
@@ -88,9 +85,8 @@ def keywords_from_speciality(speciality: str) -> List[KeywordSet]:
         ]
     if speciality == "Internal Medicine - Medical Oncology":
         return [
-            {"keywords": ["Internal Medicine", "Medical Oncology"], "operator": "AND"},
             {
-                "keywords": ["Internal Medicine", "Oncologist", "Oncology", "Cancer"],
+                "keywords": ["Internal Medicine", "Medical Oncology", "Oncologist", "Oncology", "Cancer"],
                 "operator": "OR",
             },
         ]
