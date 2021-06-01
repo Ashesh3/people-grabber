@@ -22,7 +22,9 @@ if "Twitter" in config["SEARCH_MODULES"]:
     twitter_anon_session = requests.Session()
 
 rapid_api_keys = config["RAPIDAPI_KEYS"]
-rapid_api_index = 0
+rapid_api_index, facebook_index = 0, 0
+
+facebook_accs = config["FACEBOOK_COOKIES"]
 
 
 def refresh_twitter_anon_token():
@@ -236,16 +238,18 @@ def twitter_query(query, search_type) -> Union[str, Dict[str, TwitterResults]]:
 def facebook_search(fb_id: str):
     if f"facebook:{fb_id}" in cache:
         return cache[f"facebook:{fb_id}"]
+    global facebook_index
     acc_data = ""
+    facebook_index += 1
+    fb_acc = facebook_index % len(facebook_accs)
     try:
-        acc_data = json.dumps(get_profile(fb_id, cookies=cookiejar_from_dict(config["FACEBOOK_COOKIES"])))
-        acc_data += json.dumps(list(get_posts(fb_id, pages=1, options={"allow_extra_requests": False})), default=str)
-        print(f"[Facebook] Scraping [{fb_id}]")
+        acc_data = json.dumps(get_profile(fb_id, cookies=cookiejar_from_dict(facebook_accs[fb_acc])))
+        print(f"[Facebook] [{fb_acc+1}] Scraping [{fb_id}]")
         cache[f"facebook:{fb_id}"] = acc_data
     except TemporarilyBanned as e:
-        print(f"[Facebook] [{fb_id}] [{e}]")
+        print(f"[Facebook] [{fb_acc}] [{fb_id}] [{e}]")
     except Exception as e:
-        print(f"[Facebook] [{fb_id}] [{e}]")
+        print(f"[Facebook] [{fb_acc}] [{fb_id}] [{e}]")
         cache[f"facebook:{fb_id}"] = acc_data
     return acc_data
 
