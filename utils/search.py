@@ -7,6 +7,7 @@ from sqlitedict import SqliteDict
 from requests.cookies import cookiejar_from_dict
 from utils.config import config
 from facebook_scraper import get_profile, get_posts
+from facebook_scraper.exceptions import TemporarilyBanned
 
 load_dotenv()
 
@@ -240,9 +241,12 @@ def facebook_search(fb_id: str):
         acc_data = json.dumps(get_profile(fb_id, cookies=cookiejar_from_dict(config["FACEBOOK_COOKIES"])))
         acc_data += json.dumps(list(get_posts(fb_id, pages=1, options={"allow_extra_requests": False})), default=str)
         print(f"[Facebook] Scraping [{fb_id}]")
+        cache[f"facebook:{fb_id}"] = acc_data
+    except TemporarilyBanned as e:
+        print(f"[Facebook] [{fb_id}] [{e}]")
     except Exception as e:
         print(f"[Facebook] [{fb_id}] [{e}]")
-    cache[f"facebook:{fb_id}"] = acc_data
+        cache[f"facebook:{fb_id}"] = acc_data
     return acc_data
 
 
