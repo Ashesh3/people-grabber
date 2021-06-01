@@ -10,6 +10,7 @@ import os
 import traceback
 from datetime import datetime
 from utils.config import config
+from signal import SIGINT
 
 doc_data = DataReader(config["DOCUMENT"]["INPUT"], config["DOCUMENT"]["OUTPUT"])
 
@@ -37,7 +38,7 @@ async def main(thread_id: int, start: int, stop: int):
         print(traceback.format_exc())
         print(f"[{thread_id}] Exiting... Details Saved...")
         doc_data.save()
-        os._exit(1)
+        os.kill(os.getpid(), SIGINT)
     print(f"[{thread_id}] Saving Data...")
     doc_data.save()
     print(f"[{thread_id}] Finished!")
