@@ -22,7 +22,7 @@ class Facebook:
             if any([x in result["link"] for x in ["/public", "/directory/", "/videos/", "/pages/"]]):
                 continue
             total_keywords = len(all_keywords)
-            facebook_profile = facebook_search(get_facebook_username(result["link"]))
+            facebook_profile = facebook_search(result["link"])
             result_content = (result["title"] + result["description"]).lower() + facebook_profile.lower()
             matched_keywords = sum([keyword.lower() in result_content for keyword in all_keywords])
             confidence = round((matched_keywords / total_keywords) * 100, 2)
