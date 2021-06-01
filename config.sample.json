@@ -20,5 +20,6 @@
         "OUTPUT": "out.xlsx",
         "START": 0,
         "STOP": 100
-    }
+    },
+    "THREADS": 3
 }

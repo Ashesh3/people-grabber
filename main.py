@@ -6,22 +6,14 @@ from search_modules.facebook import Facebook
 from utils.data import DataReader
 from search_modules import *
 import asyncio
-import sys
+import os
 import traceback
 from datetime import datetime
 from utils.config import config
 
 doc_data = DataReader(config["DOCUMENT"]["INPUT"], config["DOCUMENT"]["OUTPUT"])
 
-data_range = (int(config["DOCUMENT"]["START"]), int(config["DOCUMENT"]["STOP"]))
-data_range_len = (data_range[1] - data_range[0]) // 3
-data_ranges = [
-    (data_range[0], data_range[0] + data_range_len),
-    (data_range[0] + data_range_len, data_range[0] + (2 * data_range_len)),
-    (data_range[0] + (2 * data_range_len), data_range[0] + (3 * data_range_len) + 1),
-]
-
-print(data_ranges)
+num_threads = int(config["THREADS"])
 
 
 async def main(thread_id: int, start: int, stop: int):
@@ -29,8 +21,8 @@ async def main(thread_id: int, start: int, stop: int):
         for i, row in doc_data.get_rows(start, stop):
             doc_name = f"{row['fullName'].split('-')[-1]}"  # doc_name = f"{row['first']} {row['last'].split('-')[-1]}"
             doc_speciality = row["specialty"]
-            percent_done = (i / doc_data._size) * 100
-            print(f"[{thread_id}]==== #{i} : {doc_name} [{doc_speciality}] [{percent_done:.2f}%] ====")
+            percent_done = (i / stop) * 100
+            print(f"[{thread_id}]==== #{i}/{stop} : {doc_name} [{doc_speciality}] [{percent_done:.2f}%] ====")
             start_time = datetime.now()
             enabled_search_modules: List[function] = []
             for search_module in [Linkedin, Twitter, Facebook]:
@@ -43,20 +35,25 @@ async def main(thread_id: int, start: int, stop: int):
                 doc_data.write_data(i, config["SEARCH_MODULES"][index].lower(), search_result)
     except:
         print(traceback.format_exc())
-        print("Exiting... Details Saved...")
+        print(f"[{thread_id}] Exiting... Details Saved...")
         doc_data.save()
-        sys.exit()
-    print(f"[Thread {thread_id}] Saving Data...")
+        os._exit(1)
+    print(f"[{thread_id}] Saving Data...")
     doc_data.save()
-    print(f"[Thread {thread_id}] Finished!")
+    print(f"[{thread_id}] Finished!")
 
 
-thread_1 = Thread(target=asyncio.run, args=(main(1, *data_ranges[0]),), daemon=True)
-thread_2 = Thread(target=asyncio.run, args=(main(2, *data_ranges[1]),), daemon=True)
-thread_3 = Thread(target=asyncio.run, args=(main(3, *data_ranges[2]),), daemon=True)
-thread_1.start()
-thread_2.start()
-thread_3.start()
-thread_1.join()
-thread_2.join()
-thread_3.join()
+start = int(config["DOCUMENT"]["START"])
+stop = int(config["DOCUMENT"]["STOP"])
+data_range_len = (stop - start) // num_threads
+thread_list = []
+for i in range(num_threads):
+    stop = start + data_range_len
+    thread = Thread(target=asyncio.run, args=(main(i + 1, start, stop),), daemon=True)
+    thread_list.append(thread)
+    start = stop
+
+for thread in thread_list:
+    thread.start()
+for thread in thread_list:
+    thread.join()

@@ -3,10 +3,8 @@ from typing import List, Dict, Union
 from urllib.parse import quote_plus
 from utils.types import *
 from dotenv import load_dotenv
-from linkedin_api import Linkedin
 from sqlitedict import SqliteDict
 from requests.cookies import cookiejar_from_dict
-from random import randint
 from utils.config import config
 from facebook_scraper import get_profile, get_posts
 
@@ -63,7 +61,7 @@ async def linkedin_search(username: str) -> str:
     }
     response = requests.get("https://nubela.co/proxycurl/api/v2/linkedin", params=params, headers=header_dic)
     search_result = response.text
-    if response.status_code != 200:
+    if response.status_code not in [200, 404]:
         raise RuntimeError(f"[Linkedin] Error Scraping [{response.status_code}] [{search_result}]")
     cache[f"linkedin:{username}"] = search_result
     return search_result
