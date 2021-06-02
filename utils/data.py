@@ -19,6 +19,7 @@ class DataReader:
             },
         )
         self._size = len(self._df.index)
+        self._is_saving = False
 
     def write_data(self, row_no: int, site_name: str, data: List[ModuleResults]):
         if site_name not in ["linkedin", "twitter", "youtube", "facebook", "instagram", "reddit"]:
@@ -35,4 +36,9 @@ class DataReader:
             yield i, row
 
     def save(self):
-        StyleFrame(self._df).to_excel(self._save_file_name).save()
+        if self._is_saving:
+            print("Already Saving...")
+        else:
+            self._is_saving = True
+            StyleFrame(self._df).to_excel(self._save_file_name).save()
+            self._is_saving = False

@@ -39,9 +39,6 @@ async def main(thread_id: int, start: int, stop: int):
         print(f"[{thread_id}] Exiting... Details Saved...")
         doc_data.save()
         os.kill(os.getpid(), SIGINT)
-    print(f"[{thread_id}] Saving Data...")
-    doc_data.save()
-    print(f"[{thread_id}] Finished!")
 
 
 start = int(config["DOCUMENT"]["START"])
@@ -58,3 +55,7 @@ for thread in thread_list:
     thread.start()
 for thread in thread_list:
     thread.join()
+
+print(f"[SUCCESS] All Threads Finished! Saving Data...")
+doc_data.save()
+print(f"[SUCCESS] DONE!")
