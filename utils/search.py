@@ -319,33 +319,9 @@ def fb_people_search(name):
         cookies=facebook_accs[fb_acc],
     )
     soup = BeautifulSoup(response.content, "html.parser")
+    if not soup.select("#BrowseResultsContainer"):
+        return []
     results = soup.select("#BrowseResultsContainer")[0].select(".n.bz a")
     pages = [f"https://facebook.com{results[i].get('href').split('refid')[0]}" for i in range(len(results))]
-    response_2 = requests.get(
-        "https://mbasic.facebook.com/search/people/",
-        headers={
-            "Host": "mbasic.facebook.com",
-            "Sec-Ch-Ua": '\\" Not A;Brand\\";v=\\"99\\", \\"Chromium\\";v=\\"90\\"',
-            "Sec-Ch-Ua-Mobile": "?0",
-            "Upgrade-Insecure-Requests": "1",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
-            "Sec-Fetch-Site": "none",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-User": "?1",
-            "Sec-Fetch-Dest": "document",
-            "Accept-Language": "en-US,en;q=0.9",
-        },
-        params=(
-            ("q", name),
-            ("source", "filter"),
-            ("isTrending", "0"),
-            ("cursor", soup.select("#see_more_pager a")[0].get("href").split("cursor=")[1].split("&")[0]),
-        ),
-        cookies=facebook_accs[fb_acc],
-    )
-    soup = BeautifulSoup(response_2.content, "html.parser")
-    results = soup.select("#BrowseResultsContainer")[0].select(".n.bz a")
-    pages.extend([f"https://facebook.com{results[i].get('href').split('refid')[0]}" for i in range(len(results))])
     cache[f"facebook_people:{name}"] = pages
     return pages
