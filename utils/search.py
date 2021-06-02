@@ -139,17 +139,17 @@ def google_search(search_term: str, max_terms: int = 5) -> List[GoogleResults]:
             )
             data = conn.getresponse().read().decode("utf-8")
             json_data = json.loads(data)
-            if "messages" in json_data:
-                raise ValueError("Error Scrapping Google.. ", json_data["messages"])
+            if "message" in json_data:
+                raise ValueError("Error Scrapping Google.. ", json_data["message"])
             final_search_results: List[GoogleResults] = [
                 {"title": result["title"], "link": result["link"], "description": result["description"]}
                 for result in json_data["results"]
             ]
             cache[search_term] = final_search_results
             return final_search_results[:max_terms]
-        except Exception:
+        except Exception as e:
             rapid_api_index += 1
-            print(f"RapidApi Switching key... {rapid_api_index % len(rapid_api_keys)}")
+            print(f"RapidApi Switching key... {rapid_api_index % len(rapid_api_keys)} [{e.__class__}: {e}]")
             err_count += 1
     raise ValueError("Error in RapidAPI..")
 
