@@ -21,5 +21,6 @@
         "START": 0,
         "STOP": 100
     },
-    "THREADS": 3
+    "THREADS": 3,
+    "DRY_RUN": 0
 }

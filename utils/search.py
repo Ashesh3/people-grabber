@@ -53,6 +53,8 @@ if "Twitter" in config["SEARCH_MODULES"]:
 async def linkedin_search(username: str) -> str:
     if f"linkedin:{username}" in cache:
         return cache[f"linkedin:{username}"]
+    if config["DRY_RUN"]:
+        return ""
     for tries in range(1, 11):
         print(f"[Linkedin] Scraping [{username}] [{tries}]")
         header_dic = {"Authorization": "Bearer " + config["LINKEDIN_API_KEY"]}
@@ -125,7 +127,8 @@ def get_search_query(doc_name: str, site: str, keyword: KeywordSet) -> str:
 def google_search(search_term: str, max_terms: int = 5) -> List[GoogleResults]:
     if search_term in cache:
         return cache[search_term][:max_terms]
-
+    if config["DRY_RUN"]:
+        return []
     global rapid_api_index
     err_count = 0
     json_data = {}
@@ -190,6 +193,8 @@ def get_twitter_likes(user_id: str):
 def twitter_query(query, search_type) -> Union[str, Dict[str, TwitterResults]]:
     if f"{query}:{search_type}" in cache:
         return cache[f"{query}:{search_type}"]
+    if config["DRY_RUN"]:
+        return {}
     if search_type == "likes":
         query_result = get_twitter_likes(query)
         cache[f"{query}:{search_type}"] = query_result
@@ -242,6 +247,8 @@ def facebook_search(fb_link: str):
     fb_id = get_facebook_username(fb_link)
     if f"facebook:{fb_id}" in cache:
         return cache[f"facebook:{fb_id}"]
+    if config["DRY_RUN"]:
+        return ""
     sleep(10)
     global facebook_index
     facebook_index += 1
@@ -270,6 +277,7 @@ def facebook_search(fb_link: str):
             sleep(600)
             raise RuntimeError("[ERROR] Facebook banned")
         cache[f"facebook:{fb_id}"] = acc_resp
+        return acc_resp
     except Exception as e:
         print(f"[Facebook] [{fb_acc}] [{fb_id}] [{e}]")
     return ""
@@ -308,6 +316,8 @@ def facebook_legacy_search(fb_link: str):
 def fb_people_search(name):
     if f"facebook_people:{name}" in cache:
         return cache[f"facebook_people:{name}"]
+    if config["DRY_RUN"]:
+        return []
     sleep(30)
     global facebook_index
     facebook_index += 1
