@@ -4,4 +4,3 @@ pandas==1.2.4
 requests==2.25.1
 python-dotenv==0.17.1
 sqlitedict==1.7.0
-facebook-scraper==0.2.38

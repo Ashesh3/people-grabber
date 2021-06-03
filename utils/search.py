@@ -3,10 +3,7 @@ from typing import List, Dict, Union
 from urllib.parse import quote_plus
 from utils.types import *
 from sqlitedict import SqliteDict
-from requests.cookies import cookiejar_from_dict
 from utils.config import config
-from facebook_scraper import get_profile, get_posts
-from facebook_scraper.exceptions import TemporarilyBanned
 from bs4 import BeautifulSoup
 from time import sleep
 
@@ -236,27 +233,40 @@ def twitter_query(query, search_type) -> Union[str, Dict[str, TwitterResults]]:
 
 
 def facebook_search(fb_link: str):
-    sleep(30)
     fb_id = get_facebook_username(fb_link)
     if f"facebook:{fb_id}" in cache:
         return cache[f"facebook:{fb_id}"]
+    sleep(10)
     global facebook_index
-    acc_data = ""
     facebook_index += 1
     fb_acc = facebook_index % len(facebook_accs)
     try:
-        acc_data = json.dumps(get_profile(fb_id, cookies=cookiejar_from_dict(facebook_accs[fb_acc])))
         print(f"[Facebook] [{fb_acc+1}] Scraping [{fb_id}]")
-        cache[f"facebook:{fb_id}"] = acc_data
-    except TemporarilyBanned as e:
-        sleep(5 * 60)
-        raise RuntimeError("[Facebook] Temporarily Banned")
-        # print(f"[Facebook] [{fb_acc}] [{fb_id}] [{e}].. Legacy Searching...")
-        # acc_data = facebook_legacy_search(fb_link)
+        acc_resp = requests.get(
+            fb_link,
+            headers={
+                "Host": "mbasic.facebook.com",
+                "Sec-Ch-Ua": '\\" Not A;Brand\\";v=\\"99\\", \\"Chromium\\";v=\\"90\\"',
+                "Sec-Ch-Ua-Mobile": "?0",
+                "Upgrade-Insecure-Requests": "1",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+                "Sec-Fetch-Site": "none",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-User": "?1",
+                "Sec-Fetch-Dest": "document",
+                "Accept-Language": "en-US,en;q=0.9",
+            },
+            cookies=facebook_accs[fb_acc],
+        ).text
+        if any([x in acc_resp for x in ["use this feature at the moment", "temporarily blocked"]]):
+            print(f"[Facebook Banned] [{fb_acc+1}] [Sleep 600]")
+            sleep(600)
+            raise RuntimeError("[ERROR] Facebook banned")
+        cache[f"facebook:{fb_id}"] = acc_resp
     except Exception as e:
         print(f"[Facebook] [{fb_acc}] [{fb_id}] [{e}]")
-        cache[f"facebook:{fb_id}"] = acc_data
-    return acc_data
+    return ""
 
 
 def get_facebook_username(fb_link):
