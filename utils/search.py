@@ -53,18 +53,23 @@ if "Twitter" in config["SEARCH_MODULES"]:
 async def linkedin_search(username: str) -> str:
     if f"linkedin:{username}" in cache:
         return cache[f"linkedin:{username}"]
-
-    print(f"[Linkedin] Scraping [{username}]")
-    header_dic = {"Authorization": "Bearer " + config["LINKEDIN_API_KEY"]}
-    params = {
-        "url": f"https://www.linkedin.com/in/{username}",
-    }
-    response = requests.get("https://nubela.co/proxycurl/api/v2/linkedin", params=params, headers=header_dic)
-    search_result = response.text
-    if response.status_code not in [200, 404]:
-        raise RuntimeError(f"[Linkedin] Error Scraping [{response.status_code}] [{search_result}]")
-    cache[f"linkedin:{username}"] = search_result
-    return search_result
+    for tries in range(1, 11):
+        print(f"[Linkedin] Scraping [{username}] [{tries}]")
+        header_dic = {"Authorization": "Bearer " + config["LINKEDIN_API_KEY"]}
+        params = {
+            "url": f"https://www.linkedin.com/in/{username}",
+        }
+        response = requests.get("https://nubela.co/proxycurl/api/v2/linkedin", params=params, headers=header_dic)
+        search_result = response.text
+        if response.status_code not in [200, 404, 429]:
+            raise RuntimeError(f"[Linkedin] Error Scraping [{response.status_code}] [{search_result}]")
+        elif response.status_code == 429:
+            print("[Linkedin] Ratelimited! Waiting 60secs... [{tries}]")
+            sleep(60)
+        else:
+            cache[f"linkedin:{username}"] = search_result
+            return search_result
+    raise RuntimeError("[Linkedin] Permanent Failure")
 
 
 def keywords_from_speciality(speciality: str) -> List[KeywordSet]:
