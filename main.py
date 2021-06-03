@@ -23,7 +23,7 @@ async def main(thread_id: int, start: int, stop: int):
             doc_name = " ".join([str(row[x]) for x in config["INPUT_COLS"]])
             doc_speciality = row["specialty"]
             percent_done = ((i - start) / (stop - start)) * 100
-            print(f"[{thread_id}]====[{start}] - #{i}/{stop} : {doc_name} [{doc_speciality}] [{percent_done:.2f}%] ====")
+            print(f"[{thread_id}]==== {start} - #{i}/{stop} : {doc_name} [{doc_speciality}] [{percent_done:.2f}%] ====")
             start_time = datetime.now()
             enabled_search_modules: List[function] = []
             for search_module in [Linkedin, Twitter, Facebook]:
