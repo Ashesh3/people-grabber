@@ -64,7 +64,7 @@ async def linkedin_search(username: str) -> str:
         if response.status_code not in [200, 404, 429]:
             raise RuntimeError(f"[Linkedin] Error Scraping [{response.status_code}] [{search_result}]")
         elif response.status_code == 429:
-            print("[Linkedin] Ratelimited! Waiting 60secs... [{tries}]")
+            print(f"[Linkedin] Ratelimited! Waiting 60secs... [{tries}]")
             sleep(60)
         else:
             cache[f"linkedin:{username}"] = search_result
@@ -128,6 +128,7 @@ def google_search(search_term: str, max_terms: int = 5) -> List[GoogleResults]:
 
     global rapid_api_index
     err_count = 0
+    json_data = {}
     while err_count < len(rapid_api_keys):
         try:
             conn = http.client.HTTPSConnection("google-search3.p.rapidapi.com")
@@ -151,7 +152,7 @@ def google_search(search_term: str, max_terms: int = 5) -> List[GoogleResults]:
             return final_search_results[:max_terms]
         except Exception as e:
             rapid_api_index += 1
-            print(f"RapidApi Switching key... {rapid_api_index % len(rapid_api_keys)} [{e.__class__}: {e}]")
+            print(f"RapidApi Switching key... {rapid_api_index % len(rapid_api_keys)} [{e.__class__}: {e}] [{json_data}]")
             err_count += 1
     raise ValueError("Error in RapidAPI..")
 
