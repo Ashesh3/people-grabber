@@ -20,9 +20,9 @@ num_threads = int(config["THREADS"])
 async def main(thread_id: int, start: int, stop: int):
     try:
         for i, row in doc_data.get_rows(start, stop):
-            doc_name = f"{row['fullName'].split('-')[-1]}"  # doc_name = f"{row['first']} {row['last'].split('-')[-1]}"
+            doc_name = " ".join([str(row[x]) for x in config["INPUT_COLS"]])
             doc_speciality = row["specialty"]
-            percent_done = (i / stop) * 100
+            percent_done = ((i - start) / (stop - start)) * 100
             print(f"[{thread_id}]==== #{i}/{stop} : {doc_name} [{doc_speciality}] [{percent_done:.2f}%] ====")
             start_time = datetime.now()
             enabled_search_modules: List[function] = []
