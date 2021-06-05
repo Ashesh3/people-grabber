@@ -187,6 +187,8 @@ def get_twitter_likes(user_id: str):
             "ct0": config["TWITTER_X_CSRF_TOKEN"],
         },
     )
+    if response.status_code != 200:
+        raise RuntimeError(f"Twitter Likes error {response.status_code}")
     return response.text
 
 
@@ -195,52 +197,59 @@ def twitter_query(query, search_type) -> Union[str, Dict[str, TwitterResults]]:
         return cache[f"{query}:{search_type}"]
     if config["DRY_RUN"]:
         return {}
-    if search_type == "likes":
-        query_result = get_twitter_likes(query)
-        cache[f"{query}:{search_type}"] = query_result
-        return query_result
-    param = {
-        "include_profile_interstitial_type": "1",
-        "include_blocking": "1",
-        "include_blocked_by": "1",
-        "include_followed_by": "1",
-        "include_want_retweets": "1",
-        "include_mute_edge": "1",
-        "include_can_dm": "1",
-        "include_can_media_tag": "1",
-        "skip_status": "1",
-        "cards_platform": "Web-12",
-        "include_cards": "1",
-        "include_ext_alt_text": "true",
-        "include_quote_count": "true",
-        "include_reply_count": "1",
-        "tweet_mode": "extended",
-        "include_entities": "true",
-        "include_user_entities": "true",
-        "include_ext_media_color": "true",
-        "include_ext_media_availability": "true",
-        "send_error_codes": "true",
-        "simple_quoted_tweet": "true",
-        "q": query,
-        "count": "30",
-        "query_source": "typed_query",
-        "pc": "1",
-        "spelling_corrections": "1",
-        "ext": "mediaStats,highlightedLabel",
-    }
-    if search_type == "users":
-        param["result_filter"] = "user"
+    for _ in range(15):
+        try:
+            if search_type == "likes":
+                query_result = get_twitter_likes(query)
+                cache[f"{query}:{search_type}"] = query_result
+                return query_result
+            param = {
+                "include_profile_interstitial_type": "1",
+                "include_blocking": "1",
+                "include_blocked_by": "1",
+                "include_followed_by": "1",
+                "include_want_retweets": "1",
+                "include_mute_edge": "1",
+                "include_can_dm": "1",
+                "include_can_media_tag": "1",
+                "skip_status": "1",
+                "cards_platform": "Web-12",
+                "include_cards": "1",
+                "include_ext_alt_text": "true",
+                "include_quote_count": "true",
+                "include_reply_count": "1",
+                "tweet_mode": "extended",
+                "include_entities": "true",
+                "include_user_entities": "true",
+                "include_ext_media_color": "true",
+                "include_ext_media_availability": "true",
+                "send_error_codes": "true",
+                "simple_quoted_tweet": "true",
+                "q": query,
+                "count": "30",
+                "query_source": "typed_query",
+                "pc": "1",
+                "spelling_corrections": "1",
+                "ext": "mediaStats,highlightedLabel",
+            }
+            if search_type == "users":
+                param["result_filter"] = "user"
 
-    res = twitter_anon_session.get(
-        url="https://twitter.com/i/api/2/search/adaptive.json",
-        params=param,
-    )
-    if res.status_code == 200:
-        final_search_results = res.json()["globalObjects"][search_type]
-        cache[f"{query}:{search_type}"] = final_search_results
-        return final_search_results
-    else:
-        return {}
+            res = twitter_anon_session.get(
+                url="https://twitter.com/i/api/2/search/adaptive.json",
+                params=param,
+            )
+            if res.status_code == 200:
+                final_search_results = res.json()["globalObjects"][search_type]
+                cache[f"{query}:{search_type}"] = final_search_results
+                return final_search_results
+            else:
+                raise RuntimeError(f"Twitter Error {res.status_code} {res.text}")
+        except Exception as e:
+            print(f"Twitter Error: {e} Retrying")
+            refresh_twitter_anon_token()
+            sleep(10)
+    raise ValueError("Permanent Twitter Failure")
 
 
 def facebook_search(fb_link: str):
