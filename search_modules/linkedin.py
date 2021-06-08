@@ -21,7 +21,7 @@ class Linkedin:
                     continue
                 total_keywords = len(keyword_set["keywords"])
                 linkedin_profile = await linkedin_search(result["link"].split("linkedin.com/in/")[1].split("?")[0].split("/")[0])
-                result_content = (result["title"] + result["description"]).lower() + linkedin_profile.lower()
+                result_content = linkedin_profile.lower()
                 matched_keywords = sum([keyword.lower() in result_content for keyword in keyword_set["keywords"]])
                 confidence = round((matched_keywords / total_keywords) * 100, 2)
                 if confidence > 0:
