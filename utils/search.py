@@ -248,7 +248,7 @@ def twitter_query(query, search_type) -> Union[str, Dict[str, TwitterResults]]:
         except Exception as e:
             print(f"Twitter Error: {e} Retrying")
             refresh_twitter_anon_token()
-            sleep(10)
+            sleep(30)
     raise ValueError("Permanent Twitter Failure")
 
 

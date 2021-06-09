@@ -8,10 +8,10 @@ warnings.filterwarnings("ignore")
 
 class Facebook:
     @staticmethod
-    async def search(doc_name: str, speciality: str, max_terms: int = 10) -> List[ModuleResults]:
+    async def search(doc_name: str, speciality: str, max_terms: int = 10) -> ModuleResults:
         doc_name = doc_name.lower()
         print(f"[Facebook] Starting")
-        search_hits: List[ModuleResults] = []
+        search_hits: List[ModuleResult] = []
         search_results = fb_people_search(doc_name)
         print(f"[Facebook] People Search: {len(search_results)} result(s)")
         all_keywords: List[str] = []
@@ -28,4 +28,4 @@ class Facebook:
             if confidence > 0:
                 search_hits.append({"link": result, "confidence": confidence})
         print("[Facebook] Done")
-        return sorted(search_hits, key=lambda x: x["confidence"], reverse=True)[:max_terms]
+        return {"source": "facebook", "results": sorted(search_hits, key=lambda x: x["confidence"], reverse=True)[:max_terms]}

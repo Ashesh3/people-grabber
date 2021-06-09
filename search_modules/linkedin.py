@@ -5,11 +5,11 @@ from utils.types import *
 
 class Linkedin:
     @staticmethod
-    async def search(doc_name: str, speciality: str, max_terms: int = 10) -> List[ModuleResults]:
+    async def search(doc_name: str, speciality: str, max_terms: int = 10) -> ModuleResults:
         doc_name = doc_name.lower()
         print(f"[Linkedin] Searching")
 
-        search_hits: List[ModuleResults] = []
+        search_hits: List[ModuleResult] = []
 
         keywords_sets = keywords_from_speciality(speciality)
         for keyword_set in keywords_sets:
@@ -27,4 +27,4 @@ class Linkedin:
                 if confidence > 0:
                     search_hits.append({"link": result["link"], "confidence": confidence})
         print("[Linkedin] Done")
-        return sorted(search_hits, key=lambda x: x["confidence"], reverse=True)[:max_terms]
+        return {"source": "linkedin", "results": sorted(search_hits, key=lambda x: x["confidence"], reverse=True)[:max_terms]}

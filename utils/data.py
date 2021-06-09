@@ -21,7 +21,7 @@ class DataReader:
         self._size = len(self._df.index)
         self._is_saving = False
 
-    def write_data(self, row_no: int, site_name: str, data: List[ModuleResults]):
+    def write_data(self, row_no: int, site_name: str, data: List[ModuleResult]):
         if site_name not in ["linkedin", "twitter", "youtube", "facebook", "instagram", "reddit"]:
             raise ValueError("Invalid Sitename")
 

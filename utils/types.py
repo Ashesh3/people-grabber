@@ -12,9 +12,14 @@ class GoogleResults(TypedDict):
     description: str
 
 
-class ModuleResults(TypedDict):
+class ModuleResult(TypedDict):
     link: str
     confidence: float
+
+
+class ModuleResults(TypedDict):
+    source: str
+    results: List[ModuleResult]
 
 
 class TwitterResults(TypedDict):

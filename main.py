@@ -29,11 +29,11 @@ async def main(thread_id: int, start: int, stop: int):
             for search_module in [Linkedin, Twitter, Facebook]:
                 if search_module.__name__ in config["SEARCH_MODULES"]:
                     enabled_search_modules.append(search_module.search(doc_name, doc_speciality))  # type:ignore
-            search_results = await asyncio.gather(*enabled_search_modules)  # type:ignore
+            search_results: List[ModuleResults] = await asyncio.gather(*enabled_search_modules)  # type:ignore
             print(search_results)
             print("[{}]Time elapsed: {}".format(thread_id, datetime.now() - start_time))
-            for index, search_result in enumerate(search_results):
-                doc_data.write_data(i, config["SEARCH_MODULES"][index].lower(), search_result)
+            for search_result in search_results:
+                doc_data.write_data(i, search_result["source"], search_result["results"])
     except:
         print(traceback.format_exc())
         print(f"[{thread_id}] Exiting... Details Saved...")
