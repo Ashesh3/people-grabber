@@ -1,6 +1,7 @@
 from typing import List
 from utils.search import google_search, get_search_query, keywords_from_speciality, linkedin_search
 from utils.types import *
+import json
 
 
 class Linkedin:
@@ -21,6 +22,12 @@ class Linkedin:
                     continue
                 total_keywords = len(keyword_set["keywords"])
                 linkedin_profile = await linkedin_search(result["link"].split("linkedin.com/in/")[1].split("?")[0].split("/")[0])
+                linkedin_profile_json = json.loads(linkedin_profile)
+                if "people_also_viewed" in linkedin_profile:
+                    del linkedin_profile_json["people_also_viewed"]
+                if "similarly_named_profiles" in linkedin_profile:
+                    del linkedin_profile_json["similarly_named_profiles"]
+                linkedin_profile = json.dumps(linkedin_profile_json)
                 result_content = linkedin_profile.lower()
                 matched_keywords = sum([keyword.lower() in result_content for keyword in keyword_set["keywords"]])
                 confidence = round((matched_keywords / total_keywords) * 100, 2)

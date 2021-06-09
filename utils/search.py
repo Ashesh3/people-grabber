@@ -54,7 +54,7 @@ async def linkedin_search(username: str) -> str:
     if f"linkedin:{username}" in cache:
         return cache[f"linkedin:{username}"]
     if config["DRY_RUN"]:
-        return ""
+        return "{}"
     for tries in range(1, 11):
         print(f"[Linkedin] Scraping [{username}] [{tries}]")
         header_dic = {"Authorization": "Bearer " + config["LINKEDIN_API_KEY"]}
