@@ -1,26 +1,47 @@
 {
+    "DOCUMENT": {
+        "INPUT": "input.xlsx",
+        "OUTPUT": "output.xlsx",
+        "START": 1,
+        "STOP": 10
+    },
+    "THREADS": 2,
+    "DRY_RUN": 0,
     "SEARCH_MODULES": [
         "Linkedin",
         "Twitter"
     ],
-    "CACHE_PATH": "./abc.sqlite",
-    "LINKEDIN_API_KEY": "key",
-    "RAPIDAPI_KEYS": [
-        "a",
-        "b"
+    "INPUT_COLS": [
+        "first",
+        "last"
     ],
-    "TWITTER_X_CSRF_TOKEN": "token",
-    "TWITTER_AUTHORIZATION": "auth",
-    "TWITTER_AUTH_TOKEN": "auth_token",
-    "FACEBOOK_COOKIES": {
-        "cookie_name": "cookie_value"
+    "CACHE_DATABASE": "mysql://user:pass@ip:port/db",
+    "LINKEDIN_API_KEY": "",
+    "TWITTER_X_CSRF_TOKEN": "",
+    "TWITTER_AUTHORIZATION": "",
+    "TWITTER_AUTH_TOKEN": "",
+    "FACEBOOK_COOKIES": [
+        {
+            "spin": "",
+            "xs": "",
+            "c_user": "",
+            "datr": "",
+            "fr": "",
+            "sb": ""
+        }
+    ],
+    "KEYWORDS": {
+        "term": [
+            {
+                "keywords": [
+                    "keyword1",
+                    "keyword2"
+                ],
+                "operator": "OR"
+            }
+        ]
     },
-    "DOCUMENT": {
-        "INPUT": "inp.xlsx",
-        "OUTPUT": "out.xlsx",
-        "START": 0,
-        "STOP": 100
-    },
-    "THREADS": 3,
-    "DRY_RUN": 0
+    "RAPIDAPI_KEYS": [
+        "key1"
+    ]
 }

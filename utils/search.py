@@ -2,18 +2,15 @@ import http.client, json, re, requests, zlib, pickle, sqlite3
 from typing import List, Dict, Union
 from urllib.parse import quote_plus
 from utils.types import *
-from sqlitedict import SqliteDict
 from utils.config import config
 from bs4 import BeautifulSoup
 from time import sleep
+from utils.cache import Cache
 
-
-cache = SqliteDict(
-    config["CACHE_PATH"],
-    encode=lambda obj: sqlite3.Binary(zlib.compress(pickle.dumps(obj, pickle.HIGHEST_PROTOCOL), 9)),
-    decode=lambda obj: pickle.loads(zlib.decompress(bytes(obj))),
-    autocommit=True,
-)
+google_cache = Cache("google")
+linkedin_cache = Cache("linkedin")
+facebook_cache = Cache("facebook")
+twitter_cache = Cache("twitter")
 
 if "Twitter" in config["SEARCH_MODULES"]:
     twitter_anon_session = requests.Session()
@@ -24,35 +21,9 @@ rapid_api_index, facebook_index = 0, 0
 facebook_accs = config["FACEBOOK_COOKIES"]
 
 
-def refresh_twitter_anon_token():
-    twitter_anon_session.headers.update(
-        {
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:84.0) Gecko/20100101 Firefox/84.0",
-            "accept": "*/*",
-            "accept-language": "de,en-US;q=0.7,en;q=0.3",
-            "te": "trailers",
-        }
-    )
-
-    twitter_anon_session.get("https://twitter.com")
-
-    main_js = twitter_anon_session.get(
-        "https://abs.twimg.com/responsive-web/client-web/main.e46e1035.js",
-    ).text
-    token = re.search(r"s=\"([\w\%]{104})\"", main_js)[1]
-    twitter_anon_session.headers.update({"authorization": f"Bearer {token}"})
-
-    guest_token = twitter_anon_session.post("https://api.twitter.com/1.1/guest/activate.json").json()["guest_token"]
-    twitter_anon_session.headers.update({"x-guest-token": guest_token})
-
-
-if "Twitter" in config["SEARCH_MODULES"]:
-    refresh_twitter_anon_token()
-
-
 async def linkedin_search(username: str) -> str:
-    if f"linkedin:{username}" in cache:
-        return cache[f"linkedin:{username}"]
+    if f"linkedin:{username}" in linkedin_cache:
+        return linkedin_cache[f"linkedin:{username}"]
     if config["DRY_RUN"]:
         return "{}"
     for tries in range(1, 11):
@@ -69,55 +40,15 @@ async def linkedin_search(username: str) -> str:
             print(f"[Linkedin] Ratelimited! Waiting 60secs... [{tries}]")
             sleep(60)
         else:
-            cache[f"linkedin:{username}"] = search_result
+            linkedin_cache[f"linkedin:{username}"] = search_result
             return search_result
     raise RuntimeError("[Linkedin] Permanent Failure")
 
 
 def keywords_from_speciality(speciality: str) -> List[KeywordSet]:
-    if speciality == "Registered Nurse - Oncology":
-        return [
-            {"keywords": ["Registered Nurse", "Nurse", "Oncology", " RN", "Cancer"], "operator": "OR"},
-        ]
-    if speciality == "Pharmacist - Oncology":
-        return [
-            {"keywords": ["Pharmacist", "Oncology", " Pharmacy", "Cancer"], "operator": "OR"},
-        ]
-    if speciality == "Internal Medicine - Hematology & Oncology":
-        return [
-            {
-                "keywords": ["Internal Medicine", "Hematology", " Hematologist", "Oncologist", "Oncology", "Cancer"],
-                "operator": "OR",
-            },
-        ]
-    if speciality == "Internal Medicine - Medical Oncology":
-        return [
-            {
-                "keywords": ["Internal Medicine", "Medical Oncology", "Oncologist", "Oncology", "Cancer"],
-                "operator": "OR",
-            },
-        ]
-    if speciality == "Radiology - Radiation Oncology":
-        return [
-            {"keywords": ["Radiation Oncology"], "operator": ""},
-            {
-                "keywords": ["Radiation", "Oncologist", "Oncology", "Cancer", "Radiology"],
-                "operator": "OR",
-            },
-        ]
-    if speciality == "Surgery - Surgical Oncology":
-        return [
-            {"keywords": ["Surgical Oncology"], "operator": ""},
-            {
-                "keywords": ["Oncologist", "Oncology", "Cancer", "Surgery", "Surgical"],
-                "operator": "OR",
-            },
-        ]
-    if speciality in ["NEPHROLOGY", "PEDIATRIC NEPHROLOGY"]:
-        return [
-            {"keywords": ["nephrology", "nephrologist", "kidney", "renal", "nephro"], "operator": "OR"},
-        ]
-    raise ValueError("Invalid Speciality")
+    if speciality in config["KEYWORDS"]:
+        return config["KEYWORDS"]
+    raise ValueError(f"Invalid Speciality: {speciality}")
 
 
 def get_search_query(doc_name: str, site: str, keyword: KeywordSet) -> str:
@@ -125,8 +56,8 @@ def get_search_query(doc_name: str, site: str, keyword: KeywordSet) -> str:
 
 
 def google_search(search_term: str, max_terms: int = 5) -> List[GoogleResults]:
-    if search_term in cache:
-        return cache[search_term][:max_terms]
+    if search_term in google_cache:
+        return google_cache[search_term][:max_terms]
     if config["DRY_RUN"]:
         return []
     global rapid_api_index
@@ -151,7 +82,7 @@ def google_search(search_term: str, max_terms: int = 5) -> List[GoogleResults]:
                 {"title": result["title"], "link": result["link"], "description": result["description"]}
                 for result in json_data["results"]
             ]
-            cache[search_term] = final_search_results
+            google_cache[search_term] = final_search_results
             return final_search_results[:max_terms]
         except Exception as e:
             rapid_api_index += 1
@@ -193,15 +124,15 @@ def get_twitter_likes(user_id: str):
 
 
 def twitter_query(query, search_type) -> Union[str, Dict[str, TwitterResults]]:
-    if f"{query}:{search_type}" in cache:
-        return cache[f"{query}:{search_type}"]
+    if f"{query}:{search_type}" in twitter_cache:
+        return twitter_cache[f"{query}:{search_type}"]
     if config["DRY_RUN"]:
         return {}
     for _ in range(15):
         try:
             if search_type == "likes":
                 query_result = get_twitter_likes(query)
-                cache[f"{query}:{search_type}"] = query_result
+                twitter_cache[f"{query}:{search_type}"] = query_result
                 return query_result
             param = {
                 "include_profile_interstitial_type": "1",
@@ -238,24 +169,27 @@ def twitter_query(query, search_type) -> Union[str, Dict[str, TwitterResults]]:
             res = twitter_anon_session.get(
                 url="https://twitter.com/i/api/2/search/adaptive.json",
                 params=param,
+                cookies={
+                    "auth_token": config["TWITTER_AUTH_TOKEN"],
+                    "ct0": config["TWITTER_X_CSRF_TOKEN"],
+                },
             )
             if res.status_code == 200:
                 final_search_results = res.json()["globalObjects"][search_type]
-                cache[f"{query}:{search_type}"] = final_search_results
+                twitter_cache[f"{query}:{search_type}"] = final_search_results
                 return final_search_results
             else:
                 raise RuntimeError(f"Twitter Error {res.status_code} {res.text}")
         except Exception as e:
             print(f"Twitter Error: {e} Retrying")
-            refresh_twitter_anon_token()
             sleep(30)
     raise ValueError("Permanent Twitter Failure")
 
 
 def facebook_search(fb_link: str):
     fb_id = get_facebook_username(fb_link)
-    if f"facebook:{fb_id}" in cache:
-        return cache[f"facebook:{fb_id}"]
+    if f"facebook:{fb_id}" in facebook_cache:
+        return facebook_cache[f"facebook:{fb_id}"]
     if config["DRY_RUN"]:
         return ""
     sleep(10)
@@ -285,7 +219,7 @@ def facebook_search(fb_link: str):
             print(f"[Facebook Banned] [{fb_acc+1}] [Sleep 600]")
             sleep(600)
             raise RuntimeError("[ERROR] Facebook banned")
-        cache[f"facebook:{fb_id}"] = acc_resp
+        facebook_cache[f"facebook:{fb_id}"] = acc_resp
         return acc_resp
     except Exception as e:
         print(f"[Facebook] [{fb_acc}] [{fb_id}] [{e}]")
@@ -323,8 +257,8 @@ def facebook_legacy_search(fb_link: str):
 
 
 def fb_people_search(name):
-    if f"facebook_people:{name}" in cache:
-        return cache[f"facebook_people:{name}"]
+    if f"facebook_people:{name}" in facebook_cache:
+        return facebook_cache[f"facebook_people:{name}"]
     if config["DRY_RUN"]:
         return []
     sleep(30)
@@ -358,5 +292,5 @@ def fb_people_search(name):
         return []
     results = soup.select("#BrowseResultsContainer")[0].select(".n.bz a")
     pages = [f"https://facebook.com{results[i].get('href').split('refid')[0]}" for i in range(len(results))]
-    cache[f"facebook_people:{name}"] = pages
+    facebook_cache[f"facebook_people:{name}"] = pages
     return pages
