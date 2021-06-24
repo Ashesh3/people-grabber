@@ -1,14 +1,17 @@
-import http.client, json
+import json, requests
 from typing import List
 from urllib.parse import quote_plus
 from utils.types import *
 from utils.config import config
 from utils.cache import Cache
+from utils.image import *
+
 
 google_cache = Cache("google")
+face_match_cache = Cache("faces")
 
-rapid_api_keys = config["RAPIDAPI_KEYS"]
-rapid_api_index = 0
+google_keys = config["GOOGLE_SEARCH_KEYS"]
+google_api_index = 0
 
 
 def keywords_from_speciality(speciality: str) -> List[KeywordSet]:
@@ -21,47 +24,55 @@ def get_search_query(doc_name: str, site: str, keyword: KeywordSet) -> str:
     return f'(intitle:"{doc_name}") site:{site} ' + '"' + f"\" {keyword['operator']} \"".join(keyword["keywords"]) + '"'
 
 
-def google_search(search_term: str, seach_type, max_terms: int = 5) -> List[GoogleResults]:
-    if seach_type not in ["search", "images"]:
+def google_search(search_term: str, search_type, max_terms: int = 5) -> List[GoogleResults]:
+    if search_type not in ["search", "images"]:
         raise RuntimeError("Invalid Google Search")
-    if f"{seach_type}:{search_term}" in google_cache:
-        return google_cache[f"{seach_type}:{search_term}"][:max_terms]
+    if f"{search_type}:{search_term}" in google_cache:
+        return google_cache[f"{search_type}:{search_term}"][:max_terms]
     if config["DRY_RUN"]:
         return []
-    global rapid_api_index
+    global google_api_index
     err_count = 0
     json_data = {}
-    while err_count < len(rapid_api_keys):
+    while err_count < len(google_keys):
         try:
-            conn = http.client.HTTPSConnection("google-search3.p.rapidapi.com")
-            conn.request(
-                "GET",
-                f"/api/v1/{seach_type}/q={quote_plus(search_term)}&num=100",
-                headers={
-                    "x-rapidapi-key": rapid_api_keys[rapid_api_index % len(rapid_api_keys)],
-                    "x-rapidapi-host": "google-search3.p.rapidapi.com",
-                },
+            res = requests.get(
+                url="https://customsearch.googleapis.com/customsearch/v1"
+                + "?cx=400252859a1a12146"
+                + f"&q={quote_plus(search_term)}"
+                + f"&searchType={'image&imgType=face' if search_type=='images' else 'search_type_undefined'}"
+                + f"&key={google_keys[google_api_index % len(google_keys)]}"
             )
-            data = conn.getresponse().read().decode("utf-8")
-            json_data = json.loads(data)
-            if "message" in json_data:
+            json_data = res.json()
+            if "error" in json_data:
                 raise ValueError("Error Scrapping Google.. ", json_data["message"])
-            if seach_type == "search":
+            if search_type == "search":
                 final_search_results: List[GoogleResults] = [
-                    {"title": result["title"], "link": result["link"], "description": result["description"]}
-                    for result in json_data["results"]
+                    {"title": result["title"], "link": result["link"], "description": result["snippet"]}
+                    for result in json_data["items"]
                 ]
-                google_cache[f"{seach_type}:{search_term}"] = final_search_results
+                google_cache[f"{search_type}:{search_term}"] = final_search_results
                 return final_search_results[:max_terms]
-            elif seach_type == "images":
+            elif search_type == "images":
                 final_image_results: List[GoogleResults] = [
-                    {"title": result["image"]["alt"], "link": result["image"]["src"], "description": result["link"]["href"]}
-                    for result in json_data["image_results"]
+                    {"title": result["title"], "link": result["link"], "description": result["snippet"]}
+                    for result in json_data["items"]
                 ]
-                google_cache[f"{seach_type}:{search_term}"] = final_image_results
+                google_cache[f"{search_type}:{search_term}"] = final_image_results
                 return final_image_results[:max_terms]
         except Exception as e:
-            rapid_api_index += 1
-            print(f"RapidApi Switching key... {rapid_api_index % len(rapid_api_keys)} [{e.__class__}: {e}] [{json_data}]")
+            google_api_index += 1
+            print(f"RapidApi Switching key... {google_api_index % len(google_keys)} [{e.__class__}: {e}] [{json_data}]")
             err_count += 1
     raise ValueError("Error in RapidAPI..")
+
+
+def similar_image(source, dest):
+    if f"{source}->{dest}" in face_match_cache:
+        return face_match_cache[f"{source}->{dest}"]
+    res = requests.post(
+        "http://51.79.158.45:2000/index",
+        files={"original_image": get_image(source), "to_compare_image": get_image(dest)},
+    )
+    face_match_cache[f"{source}->{dest}"] = res.text
+    return res.text == "True"

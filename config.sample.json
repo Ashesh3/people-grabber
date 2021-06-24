@@ -15,7 +15,9 @@
         "first",
         "last"
     ],
+    "IMAGE_UPLOAD_TOKEN": "key",
     "CACHE_DATABASE": "mysql://user:pass@ip:port/db",
+    "LOCAL_CACHE_DATABASE": "./file.sqlite",
     "LINKEDIN_API_KEY": "",
     "TWITTER_X_CSRF_TOKEN": "",
     "TWITTER_AUTHORIZATION": "",
@@ -41,7 +43,7 @@
             }
         ]
     },
-    "RAPIDAPI_KEYS": [
+    "GOOGLE_SEARCH_KEYS": [
         "key1"
     ]
 }
