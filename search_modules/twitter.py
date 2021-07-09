@@ -9,11 +9,11 @@ from utils.config import config
 twitter_cache = Cache("twitter")
 
 
-async def search(doc_name: str, speciality: str, max_terms: int = 10) -> ModuleResults:
-    print(f"[Twitter] Searching")
+async def search(thread_id: int, doc_name: str, speciality: str, max_terms: int = 10) -> ModuleResults:
+    print(f"[{thread_id}][Twitter] Searching")
     search_hits: List[ModuleResult] = []
     users: Dict[str, TwitterResults] = twitter_query(doc_name.title(), "users")  # type:ignore
-    print(f"[Twitter] {len(users)} result(s)")
+    print(f"[{thread_id}][Twitter] {len(users)} result(s)")
     for user_key in list(users.keys())[:10]:
         if doc_name.split(" ")[0].lower() not in users[user_key]["name"].lower():
             continue
@@ -30,7 +30,7 @@ async def search(doc_name: str, speciality: str, max_terms: int = 10) -> ModuleR
         confidence = round((matched_keywords / total_keywords) * 100, 2)
         if confidence > 0:
             search_hits.append({"link": f"https://twitter.com/{screen_name}", "confidence": confidence})
-    print("[Twitter] Done")
+    print(f"[{thread_id}][Twitter] Done")
     return {"source": "twitter", "results": sorted(search_hits, key=lambda x: x["confidence"], reverse=True)[:max_terms]}
 
 
@@ -115,6 +115,17 @@ def twitter_query(query, search_type) -> Union[str, Dict[str, TwitterResults]]:
                 cookies={
                     "auth_token": config["TWITTER_AUTH_TOKEN"],
                     "ct0": config["TWITTER_X_CSRF_TOKEN"],
+                },
+                headers={
+                    "Host": "twitter.com",
+                    "X-Csrf-Token": config["TWITTER_X_CSRF_TOKEN"],
+                    "Authorization": f"Bearer {config['TWITTER_AUTHORIZATION']}",
+                    "Content-Type": "application/json",
+                    "X-Twitter-Auth-Type": "OAuth2Session",
+                    "X-Twitter-Active-User": "yes",
+                    "Accept": "*/*",
+                    "Referer": "https://twitter.com/BrentToderian/likes",
+                    "Accept-Language": "en-US,en;q=0.9",
                 },
             )
             if res.status_code == 200:

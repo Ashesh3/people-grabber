@@ -16,14 +16,14 @@ facebook_index = 0
 MAX_FACE_MATCH_POINTS = 3
 
 
-async def search(doc_name: str, speciality: str, max_terms: int = 10) -> ModuleResults:
+async def search(thread_id: int, doc_name: str, speciality: str, max_terms: int = 5) -> ModuleResults:
     doc_name = doc_name.lower()
-    print(f"[Facebook] Searching")
+    print(f"[{thread_id}][Facebook] Searching")
     search_hits: List[ModuleResult] = []
-    search_results = fb_people_search(doc_name)
+    search_results = fb_people_search(doc_name)[:max_terms]
     doc_image_urls = google_search(doc_name, "images", 1)
     doc_image = doc_image_urls[0]["link"]
-    print(f"[Facebook] People Search: {len(search_results)} result(s)")
+    print(f"[{thread_id}][Facebook] People Search: {len(search_results)} result(s)")
     all_keywords: List[str] = []
     for keyword_set in keywords_from_speciality(speciality):
         all_keywords.extend(keyword_set["keywords"])
@@ -31,18 +31,18 @@ async def search(doc_name: str, speciality: str, max_terms: int = 10) -> ModuleR
         if any([x in result for x in ["/public", "/directory/", "/videos/", "/pages/"]]):
             continue
         total_keywords = len(all_keywords)
-        facebook_profile = get_profile(result)
+        facebook_profile = get_profile(thread_id, result)
         result_content = facebook_profile[0].lower()
         face_match_points = 0
-        if facebook_profile[1] is not None:
+        if facebook_profile[1]:
             if similar_image(doc_image, facebook_profile[1]):
                 face_match_points = MAX_FACE_MATCH_POINTS
-            print(f"[Facebook] FACE MATCH: {face_match_points==MAX_FACE_MATCH_POINTS}")
+            print(f"[{thread_id}][Facebook] FACE MATCH: {face_match_points==MAX_FACE_MATCH_POINTS}")
         matched_keywords = sum([keyword.lower() in result_content for keyword in all_keywords])
         confidence = round(((matched_keywords + face_match_points) / (total_keywords + MAX_FACE_MATCH_POINTS)) * 100, 2)
         if confidence > 0:
             search_hits.append({"link": result, "confidence": confidence})
-    print("[Facebook] Done")
+    print(f"[{thread_id}][Facebook] Done")
     return {"source": "facebook", "results": sorted(search_hits, key=lambda x: x["confidence"], reverse=True)[:max_terms]}
 
 
@@ -62,17 +62,19 @@ def get_facebook_headers(host, useragent):
     }
 
 
-def get_profile(fb_link: str):
+def get_profile(thread_id: int, fb_link: str):
+    fb_link = fb_link.replace("https://facebook.com", "https://mbasic.facebook.com")
     global facebook_index
     fb_id = get_facebook_username(fb_link)
     fb_acc = facebook_index % len(facebook_accs)
-    print(f"[Facebook] [{fb_acc+1}] Scraping [{fb_id}]")
+    print(f"[{thread_id}][Facebook] [{fb_acc+1}] Scraping [{fb_id}]")
     if f"facebook:{fb_id}" in facebook_cache:
         return facebook_cache[f"facebook:{fb_id}"]
     if config["DRY_RUN"]:
         return ""
     sleep(10)
     facebook_index += 1
+    acc_resp, profile_picture = "", ""
     try:
         host_params = (
             "mbasic.facebook.com",
@@ -92,7 +94,7 @@ def get_profile(fb_link: str):
         for i, selected_element in enumerate(image_selector):
             if len(selected_element.findAll("img", alt=lambda x: x and "profile picture" in x)) == 0:
                 del image_selector[i]
-        profile_picture = None
+        profile_picture = ""
         if image_selector:
             image_page_url = "https://mbasic.facebook.com" + image_selector[0].get("href")
             image_page = requests.get(
@@ -101,21 +103,25 @@ def get_profile(fb_link: str):
                 cookies=facebook_accs[fb_acc],
             )
             soup = BeautifulSoup(image_page.text, "html.parser")
-            image_url = "https://mbasic.facebook.com" + soup.findAll("a", href=lambda x: x and "/view_full_size/" in x)[0].get(
-                "href"
-            )
-            image = requests.get(
-                image_url,
-                headers=get_facebook_headers(*host_params),
-                cookies=facebook_accs[fb_acc],
-            )
-            soup = BeautifulSoup(image.text, "html.parser")
-            profile_picture = put_image(soup.select("meta")[0].get("content").split("url=")[1])
+            full_profile_picture = soup.findAll("a", href=lambda x: x and "/view_full_size/" in x)
+            if full_profile_picture:
+                image_url = "https://mbasic.facebook.com" + full_profile_picture[0].get("href")
+                image = requests.get(
+                    image_url,
+                    headers=get_facebook_headers(*host_params),
+                    cookies=facebook_accs[fb_acc],
+                )
+                soup = BeautifulSoup(image.text, "html.parser")
+                profile_picture = put_image(soup.select("meta")[0].get("content").split("url=")[1])
+            else:
+                image_url = soup.findAll("img", src=lambda x: x and "fbcdn" in x)[-1].get("src")
+                profile_picture = put_image(image_url)
+
         facebook_cache[f"facebook:{fb_id}"] = acc_resp, profile_picture
         return acc_resp, profile_picture
     except Exception as e:
-        print(f"[Facebook] [{fb_acc}] [{fb_id}] [{e}]")
-    return "", ""
+        print(f"[{thread_id}][Facebook] [{fb_acc}] [{fb_id}] [{e}]")
+    return acc_resp, profile_picture
 
 
 def get_facebook_username(fb_link):

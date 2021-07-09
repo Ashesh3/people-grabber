@@ -1,4 +1,4 @@
-import json, requests
+import requests
 from typing import List
 from urllib.parse import quote_plus
 from utils.types import *
@@ -45,7 +45,9 @@ def google_search(search_term: str, search_type, max_terms: int = 5) -> List[Goo
             )
             json_data = res.json()
             if "error" in json_data:
-                raise ValueError("Error Scrapping Google.. ", json_data["message"])
+                raise ValueError("Error Scrapping Google.. ", json_data["error"]["message"])
+            if "items" not in json_data:
+                json_data["items"] = []
             if search_type == "search":
                 final_search_results: List[GoogleResults] = [
                     {"title": result["title"], "link": result["link"], "description": result["snippet"]}
@@ -62,17 +64,22 @@ def google_search(search_term: str, search_type, max_terms: int = 5) -> List[Goo
                 return final_image_results[:max_terms]
         except Exception as e:
             google_api_index += 1
-            print(f"RapidApi Switching key... {google_api_index % len(google_keys)} [{e.__class__}: {e}] [{json_data}]")
+            print(f"GoogleAPI Switching key... {google_api_index % len(google_keys)} [{e.__class__}: {e}] [{json_data}]")
             err_count += 1
-    raise ValueError("Error in RapidAPI..")
+    raise ValueError("Error in GoogleAPI..")
 
 
 def similar_image(source, dest):
     if f"{source}->{dest}" in face_match_cache:
         return face_match_cache[f"{source}->{dest}"]
+    source_image = get_image(source)
+    target_image = get_image(dest)
+    if not source_image or not target_image:
+        face_match_cache[f"{source}->{dest}"] = "Missing"
+        return False
     res = requests.post(
-        "http://51.79.158.45:2000/index",
-        files={"original_image": get_image(source), "to_compare_image": get_image(dest)},
+        config["FACE_API"],
+        files={"original_image": source_image, "to_compare_image": target_image},
     )
     face_match_cache[f"{source}->{dest}"] = res.text
     return res.text == "True"
