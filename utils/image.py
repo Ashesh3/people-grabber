@@ -34,16 +34,19 @@ def put_image(url) -> str:
 
 def get_image(url):
     basename = get_base_name(url)
-    if os.path.isfile(f"./img_cache/{basename}"):
-        f = open(f"./img_cache/{basename}", "rb")
+    if os.path.isfile(f"./img_cache/{basename[:100]}"):
+        f = open(f"./img_cache/{basename[:100]}", "rb")
         return f.read()
     else:
         try:
             image = requests.get(url, verify=False)
-        except ConnectionError:
+        except Exception:
             return False
         if image.status_code != 200:
             return False
-        with open(f"./img_cache/{basename}", "wb") as f:
-            f.write(image.content)
-        return image.content
+        try:
+            with open(f"./img_cache/{basename[:100]}", "wb") as f:
+                f.write(image.content[:100])
+            return image.content
+        except OSError:
+            return False

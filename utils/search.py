@@ -3,12 +3,9 @@ from typing import List
 from urllib.parse import quote_plus
 from utils.types import *
 from utils.config import config
-from utils.cache import Cache
+from utils.cache import cache
 from utils.image import *
 
-
-google_cache = Cache("google")
-face_match_cache = Cache("faces")
 
 google_keys = config["GOOGLE_SEARCH_KEYS"]
 google_api_index = 0
@@ -27,8 +24,8 @@ def get_search_query(doc_name: str, site: str, keyword: KeywordSet) -> str:
 def google_search(search_term: str, search_type, max_terms: int = 5) -> List[GoogleResults]:
     if search_type not in ["search", "images"]:
         raise RuntimeError("Invalid Google Search")
-    if f"{search_type}:{search_term}" in google_cache:
-        return google_cache[f"{search_type}:{search_term}"][:max_terms]
+    if f"{search_type}:{search_term}" in cache:
+        return cache[f"{search_type}:{search_term}"][:max_terms]
     if config["DRY_RUN"]:
         return []
     global google_api_index
@@ -53,14 +50,14 @@ def google_search(search_term: str, search_type, max_terms: int = 5) -> List[Goo
                     {"title": result["title"], "link": result["link"], "description": result["snippet"]}
                     for result in json_data["items"]
                 ]
-                google_cache[f"{search_type}:{search_term}"] = final_search_results
+                cache[f"{search_type}:{search_term}"] = final_search_results
                 return final_search_results[:max_terms]
             elif search_type == "images":
                 final_image_results: List[GoogleResults] = [
                     {"title": result["title"], "link": result["link"], "description": result["snippet"]}
                     for result in json_data["items"]
                 ]
-                google_cache[f"{search_type}:{search_term}"] = final_image_results
+                cache[f"{search_type}:{search_term}"] = final_image_results
                 return final_image_results[:max_terms]
         except Exception as e:
             google_api_index += 1
@@ -70,16 +67,16 @@ def google_search(search_term: str, search_type, max_terms: int = 5) -> List[Goo
 
 
 def similar_image(source, dest):
-    if f"{source}->{dest}" in face_match_cache:
-        return face_match_cache[f"{source}->{dest}"]
+    if f"{source}->{dest}" in cache:
+        return cache[f"{source}->{dest}"]
     source_image = get_image(source)
     target_image = get_image(dest)
     if not source_image or not target_image:
-        face_match_cache[f"{source}->{dest}"] = "Missing"
+        cache[f"{source}->{dest}"] = "Missing"
         return False
     res = requests.post(
         config["FACE_API"],
         files={"original_image": source_image, "to_compare_image": target_image},
     )
-    face_match_cache[f"{source}->{dest}"] = res.text
+    cache[f"{source}->{dest}"] = res.text
     return res.text == "True"

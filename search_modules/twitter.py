@@ -3,10 +3,8 @@ from typing import Dict, List, Union
 from time import sleep
 from utils.types import *
 from utils.search import keywords_from_speciality
-from utils.cache import Cache
+from utils.cache import cache
 from utils.config import config
-
-twitter_cache = Cache("twitter")
 
 
 async def search(thread_id: int, doc_name: str, speciality: str, max_terms: int = 10) -> ModuleResults:
@@ -67,15 +65,15 @@ def get_twitter_likes(user_id: str):
 
 
 def twitter_query(query, search_type) -> Union[str, Dict[str, TwitterResults]]:
-    if f"{query}:{search_type}" in twitter_cache:
-        return twitter_cache[f"{query}:{search_type}"]
+    if f"{query}:{search_type}" in cache:
+        return cache[f"{query}:{search_type}"]
     if config["DRY_RUN"]:
         return {}
     for _ in range(15):
         try:
             if search_type == "likes":
                 query_result = get_twitter_likes(query)
-                twitter_cache[f"{query}:{search_type}"] = query_result
+                cache[f"{query}:{search_type}"] = query_result
                 return query_result
             param = {
                 "include_profile_interstitial_type": "1",
@@ -130,7 +128,7 @@ def twitter_query(query, search_type) -> Union[str, Dict[str, TwitterResults]]:
             )
             if res.status_code == 200:
                 final_search_results = res.json()["globalObjects"][search_type]
-                twitter_cache[f"{query}:{search_type}"] = final_search_results
+                cache[f"{query}:{search_type}"] = final_search_results
                 return final_search_results
             else:
                 raise RuntimeError(f"Twitter Error {res.status_code} {res.text}")

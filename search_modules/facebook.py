@@ -4,12 +4,11 @@ from typing import List
 from utils.search import keywords_from_speciality, google_search, similar_image
 from time import sleep
 from utils.types import *
-from utils.cache import Cache
+from utils.cache import cache
 from utils.config import config
 from bs4 import BeautifulSoup
 import requests
 
-facebook_cache = Cache("facebook")
 warnings.filterwarnings("ignore")
 facebook_accs = config["FACEBOOK_COOKIES"]
 facebook_index = 0
@@ -22,7 +21,7 @@ async def search(thread_id: int, doc_name: str, speciality: str, max_terms: int 
     search_hits: List[ModuleResult] = []
     search_results = fb_people_search(doc_name)[:max_terms]
     doc_image_urls = google_search(doc_name, "images", 1)
-    doc_image = doc_image_urls[0]["link"]
+    doc_image = doc_image_urls[0]["link"] if doc_image_urls else ""
     print(f"[{thread_id}][Facebook] People Search: {len(search_results)} result(s)")
     all_keywords: List[str] = []
     for keyword_set in keywords_from_speciality(speciality):
@@ -68,10 +67,10 @@ def get_profile(thread_id: int, fb_link: str):
     fb_id = get_facebook_username(fb_link)
     fb_acc = facebook_index % len(facebook_accs)
     print(f"[{thread_id}][Facebook] [{fb_acc+1}] Scraping [{fb_id}]")
-    if f"facebook:{fb_id}" in facebook_cache:
-        return facebook_cache[f"facebook:{fb_id}"]
+    if f"facebook:{fb_id}" in cache:
+        return cache[f"facebook:{fb_id}"]
     if config["DRY_RUN"]:
-        return ""
+        return "", ""
     sleep(10)
     facebook_index += 1
     acc_resp, profile_picture = "", ""
@@ -117,7 +116,7 @@ def get_profile(thread_id: int, fb_link: str):
                 image_url = soup.findAll("img", src=lambda x: x and "fbcdn" in x)[-1].get("src")
                 profile_picture = put_image(image_url)
 
-        facebook_cache[f"facebook:{fb_id}"] = acc_resp, profile_picture
+        cache[f"facebook:{fb_id}"] = acc_resp, profile_picture
         return acc_resp, profile_picture
     except Exception as e:
         print(f"[{thread_id}][Facebook] [{fb_acc}] [{fb_id}] [{e}]")
@@ -145,8 +144,8 @@ def facebook_legacy_search(fb_link: str):
 
 
 def fb_people_search(name):
-    if f"facebook_people:{name}" in facebook_cache:
-        return facebook_cache[f"facebook_people:{name}"]
+    if f"facebook_people:{name}" in cache:
+        return cache[f"facebook_people:{name}"]
     if config["DRY_RUN"]:
         return []
     sleep(30)
@@ -175,5 +174,5 @@ def fb_people_search(name):
         for i in range(len(results))
         if len(results[i].select("img")) > 0 and results[i].get("href") and "add_friend" not in results[i].get("href")
     ]
-    facebook_cache[f"facebook_people:{name}"] = pages
+    cache[f"facebook_people:{name}"] = pages
     return pages

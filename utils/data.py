@@ -34,8 +34,8 @@ class DataReader:
         with self._lock:
             if self._is_saving:
                 return (0, False)
-            while self._current_row < start:
-                self._current_row += 1
+            if self._current_row < start:
+                self._current_row = start
             if self._current_row > end:
                 return (0, False)
             data = self._current_row, self._df.iloc[self._current_row]
