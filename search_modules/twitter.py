@@ -34,7 +34,7 @@ async def search(thread_id: int, doc_name: str, speciality: str, max_terms: int 
 
 def get_twitter_likes(user_id: str):
     response = requests.get(
-        "https://twitter.com/i/api/graphql/OU4zjDOFfM9ZHq2aTjUNCA/Likes",
+        "https://twitter.com/i/api/graphql/Ay8caIt8NEaf_ulIvhl4uQ/Likes",
         headers={
             "Host": "twitter.com",
             "X-Csrf-Token": config["TWITTER_X_CSRF_TOKEN"],
@@ -51,7 +51,7 @@ def get_twitter_likes(user_id: str):
                 "variables",
                 '{"userId":"'
                 + user_id
-                + '","count":100,"withHighlightedLabel":false,"withTweetQuoteCount":false,"includePromotedContent":false,"withTweetResult":false,"withReactions":false,"withUserResults":false,"withClientEventToken":false,"withBirdwatchNotes":false,"withBirdwatchPivots":false,"withVoice":false,"withNonLegacyCard":true}',
+                + '","count":100,"withHighlightedLabel":false,"withTweetQuoteCount":false,"includePromotedContent":false,"withTweetResult":true,"withReactions":false,"withSuperFollowsTweetFields":false,"withSuperFollowsUserFields":false,"withUserResults":false,"withClientEventToken":false,"withBirdwatchNotes":false,"withBirdwatchPivots":false,"withVoice":false}',
             ),
         ),
         cookies={
