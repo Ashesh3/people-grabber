@@ -1,54 +1,18 @@
-from instagram_private_api import Client
+from time import sleep
+
+from requests.cookies import cookiejar_from_dict
 from utils.image import put_image
-import requests, os, json, codecs
+import requests
 from typing import List, Tuple
 from utils.search import keywords_from_speciality, google_search, similar_image
-from time import sleep
 from utils.types import *
 from utils.cache import cache
 from utils.config import config
 
-
-def to_json(python_object):
-    if isinstance(python_object, bytes):
-        return {"__class__": "bytes", "__value__": codecs.encode(python_object, "base64").decode()}
-    raise TypeError(repr(python_object) + " is not JSON serializable")
-
-
-def from_json(json_object):
-    if "__class__" in json_object and json_object["__class__"] == "bytes":
-        return codecs.decode(json_object["__value__"].encode(), "base64")
-    return json_object
-
-
-def onlogin_callback(api, new_settings_file):
-    cache_settings = api.settings
-    with open(new_settings_file, "w") as outfile:
-        json.dump(cache_settings, outfile, default=to_json)
-        print("SAVED: {0!s}".format(new_settings_file))
-
-
-settings_file = "cache_insta_cookies.json"
-if not os.path.isfile(settings_file):
-    print("Unable to find file: {0!s}".format(settings_file))
-
-    api = Client(
-        config["INSTAGRAM_CREDENTIALS"]["user_name"],
-        config["INSTAGRAM_CREDENTIALS"]["password"],
-        on_login=lambda x: onlogin_callback(x, "cache_insta_cookies.json"),
-    )
-else:
-    with open(settings_file) as file_data:
-        cached_settings = json.load(file_data, object_hook=from_json)
-    print("Reusing settings: {0!s}".format(settings_file))
-
-    device_id = cached_settings.get("device_id")
-    api = Client(
-        config["INSTAGRAM_CREDENTIALS"]["user_name"], config["INSTAGRAM_CREDENTIALS"]["password"], settings=cached_settings
-    )
-
-
 MAX_FACE_MATCH_POINTS = 3
+
+insta_accs = config["INSTAGRAM_COOKIES"]
+insta_index = 0
 
 
 async def search(thread_id: int, doc_name: str, speciality: str, max_terms: int = 5) -> ModuleResults:
@@ -82,13 +46,24 @@ def instagram_search(name, max_terms=5) -> List[Tuple[str, str, str]]:
         return cache[f"instagram_search:{name}:{max_terms}"]
     if config["DRY_RUN"]:
         return []
+    global insta_index
     tries = 0
-    while tries < 10:
+    while tries < len(insta_accs):
         try:
+            insta_index += 1
+            insta_acc = insta_index % len(insta_accs)
             tries += 1
             api_results = requests.get(
                 f"https://www.instagram.com/web/search/topsearch/?context=blended&query={name}&rank_token=0.09816429322112841&include_reel=false",
-                cookies=api.cookie_jar,
+                headers={
+                    "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+                    "accept-language": "en-US,en;q=0.9",
+                    "cache-control": "no-cache",
+                    "pragma": "no-cache",
+                    "sec-ch-ua": '" Not;A Brand";v="99", "Microsoft Edge";v="91", "Chromium";v="91"',
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36",
+                },
+                cookies=cookiejar_from_dict(insta_accs[insta_acc]),
             ).json()
             results = []
             for item in api_results.get("users", [])[:max_terms]:
@@ -105,10 +80,25 @@ def get_picture_bio(username) -> Tuple[str, str]:
     print(f"[Instagram] Scraping {username}")
     bio = ""
     tries = 0
-    try:
-        while tries < 10:
+    global insta_index
+    tries = 0
+    while tries < len(insta_accs):
+        try:
+            insta_index += 1
+            insta_acc = insta_index % len(insta_accs)
             tries += 1
-            profile_info = requests.get(f"https://www.instagram.com/{username}/?__a=1", cookies=api.cookie_jar)
+            profile_info = requests.get(
+                f"https://www.instagram.com/{username}/?__a=1",
+                headers={
+                    "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+                    "accept-language": "en-US,en;q=0.9",
+                    "cache-control": "no-cache",
+                    "pragma": "no-cache",
+                    "sec-ch-ua": '" Not;A Brand";v="99", "Microsoft Edge";v="91", "Chromium";v="91"',
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36",
+                },
+                cookies=cookiejar_from_dict(insta_accs[insta_acc]),
+            )
             if profile_info.status_code == 429:
                 print("[Instagram] Rate Limit.. waiting 60s")
                 sleep(60)
@@ -116,6 +106,6 @@ def get_picture_bio(username) -> Tuple[str, str]:
             bio = profile_info.json()["graphql"]["user"]["biography"]
             picture = profile_info.json()["graphql"]["user"]["profile_pic_url_hd"]
             return picture, bio
-    except Exception:
-        pass
+        except Exception:
+            pass
     return ("", "")
