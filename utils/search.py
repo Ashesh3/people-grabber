@@ -78,5 +78,7 @@ def similar_image(source, dest):
         config["FACE_API"],
         files={"original_image": source_image, "to_compare_image": target_image},
     )
+    if res.status_code == 404:
+        raise RuntimeError("FaceAPI Down!")
     cache[f"{source}->{dest}"] = res.text
     return res.text == "True"

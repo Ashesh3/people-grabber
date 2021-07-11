@@ -23,6 +23,8 @@ def get_base_name(url):
 
 
 def put_image(url) -> str:
+    if not url:
+        return ""
     image_data = requests.get(url, verify=False)
     image_key = get_id()
     basename = f"{image_key}.png"
@@ -46,7 +48,7 @@ def get_image(url):
             return False
         try:
             with open(f"./img_cache/{basename[:100]}", "wb") as f:
-                f.write(image.content[:100])
+                f.write(image.content)
             return image.content
         except OSError:
             return False
