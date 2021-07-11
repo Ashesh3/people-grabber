@@ -1,10 +1,12 @@
 import requests, json
+import linkedin_api
 from typing import List
 from time import sleep
 from utils.search import google_search, get_search_query, keywords_from_speciality
 from utils.types import *
 from utils.cache import cache
 from utils.config import config
+from requests.cookies import cookiejar_from_dict
 
 
 async def search(thread_id: int, doc_name: str, speciality: str, max_terms: int = 10) -> ModuleResults:
@@ -52,19 +54,25 @@ async def linkedin_scrape(thread_id: int, username: str) -> str:
     if config["DRY_RUN"]:
         return "{}"
     for tries in range(1, 11):
-        print(f"[{thread_id}][Linkedin] Scraping [{username}] [{tries}]")
-        header_dic = {"Authorization": "Bearer " + config["LINKEDIN_API_KEY"]}
-        params = {
-            "url": f"https://www.linkedin.com/in/{username}",
-        }
-        response = requests.get(f"{config['LINKEDIN_HOST']}/proxycurl/api/v2/linkedin", params=params, headers=header_dic)
-        search_result = response.text
-        if response.status_code not in [200, 404, 429]:
-            raise RuntimeError(f"[Linkedin] Error Scraping [{response.status_code}] [{search_result}]")
-        elif response.status_code == 429:
-            print(f"[{thread_id}][Linkedin] Ratelimited! Waiting 60secs... [{tries}]")
-            sleep(60)
-        else:
+        try:
+            print(f"[{thread_id}][Linkedin] Scraping [{username}] [{tries}]")
+            if config["LINKEDIN_MANUAL"]:
+                linkedin_client = linkedin_api.Linkedin("", "", cookies=cookiejar_from_dict(config["LINKEDIN_COOKIES"]))
+                search_result = json.dumps(linkedin_client.get_profile(username))
+            else:
+                header_dic = {"Authorization": "Bearer " + config["LINKEDIN_API_KEY"]}
+                params = {
+                    "url": f"https://www.linkedin.com/in/{username}",
+                }
+                response = requests.get(f"{config['LINKEDIN_HOST']}/proxycurl/api/v2/linkedin", params=params, headers=header_dic)
+                search_result = response.text
+                if response.status_code not in [200, 404, 429]:
+                    raise RuntimeError(f"[Linkedin] Error Scraping [{response.status_code}] [{search_result}]")
+                elif response.status_code == 429:
+                    print(f"[{thread_id}][Linkedin] Ratelimited! Waiting 60secs... [{tries}]")
+                    sleep(60)
             cache[f"linkedin:{username}"] = search_result
             return search_result
+        except Exception:
+            print("[LINKEDIN] Error")
     raise RuntimeError("[{thread_id}][Linkedin] Permanent Failure")
