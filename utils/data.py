@@ -36,7 +36,7 @@ class DataReader:
                 return (0, False)
             if self._current_row < start:
                 self._current_row = start
-            if self._current_row > end:
+            if self._current_row > min(end, self._df.shape[0]):
                 return (0, False)
             data = self._current_row, self._df.iloc[self._current_row]
             self._current_row += 1
