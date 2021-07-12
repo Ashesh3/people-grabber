@@ -1,4 +1,5 @@
 import requests
+import face_recognition
 from typing import List
 from urllib.parse import quote_plus
 from utils.types import *
@@ -66,19 +67,29 @@ def google_search(search_term: str, search_type, max_terms: int = 5) -> List[Goo
     raise ValueError("Error in GoogleAPI..")
 
 
-def similar_image(source, dest):
-    if f"{source}->{dest}" in cache:
-        return cache[f"{source}->{dest}"]
-    source_image = get_image(source)
-    target_image = get_image(dest)
-    if not source_image or not target_image:
-        cache[f"{source}->{dest}"] = "Missing"
+def similar_image(source, test):
+    if f"{source}->{test}" in cache:
+        return cache[f"{source}->{test}"]
+    if config["DRY_RUN"]:
         return False
-    res = requests.post(
-        config["FACE_API"],
-        files={"original_image": source_image, "to_compare_image": target_image},
-    )
-    if res.status_code == 404:
-        raise RuntimeError("FaceAPI Down!")
-    cache[f"{source}->{dest}"] = res.text
-    return res.text == "True"
+    if not source or not test:
+        cache[f"{source}->{test}"] = "Missing"
+        return False
+    try:
+        known_image = face_recognition.load_image_file(requests.get(source, stream=True).raw)
+        unknown_image = face_recognition.load_image_file(requests.get(test, stream=True).raw)
+
+        known_encoding = face_recognition.face_encodings(known_image)
+        unknown_encoding = face_recognition.face_encodings(unknown_image)
+
+        if not known_encoding or not unknown_encoding:
+            return False
+
+        result = face_recognition.compare_faces([known_encoding[0]], unknown_encoding[0])[0]
+        cache[f"{source}->{test}"] = result
+
+        return result
+
+    except Exception as e:
+        print("FaceAPI Error :", e)
+    return False

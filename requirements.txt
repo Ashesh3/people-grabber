@@ -4,3 +4,5 @@ pandas==1.2.4
 requests==2.25.1
 peewee==3.14.4
 PyMySQL==1.0.2
+face-recognition @ git+https://github.com/ageitgey/face_recognition@87a8449a359fbc0598e95b820e920ce285b8a9d9
+face-recognition-models==0.3.0
