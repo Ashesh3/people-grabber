@@ -67,13 +67,13 @@ def google_search(search_term: str, search_type, max_terms: int = 5) -> List[Goo
     raise ValueError("Error in GoogleAPI..")
 
 
-def similar_image(source, test):
-    if f"{source}->{test}" in cache:
-        return cache[f"{source}->{test}"]
+def similar_image(source, test) -> bool:
+    if f"face:{source} {test}" in cache:
+        return cache[f"face:{source} {test}"]
     if config["DRY_RUN"]:
         return False
     if not source or not test:
-        cache[f"{source}->{test}"] = "Missing"
+        cache[f"face:{source} {test}"] = False
         return False
     try:
         known_image = face_recognition.load_image_file(requests.get(source, stream=True).raw)
@@ -83,10 +83,11 @@ def similar_image(source, test):
         unknown_encoding = face_recognition.face_encodings(unknown_image)
 
         if not known_encoding or not unknown_encoding:
+            cache[f"face:{source} {test}"] = False
             return False
 
         result = face_recognition.compare_faces([known_encoding[0]], unknown_encoding[0])[0]
-        cache[f"{source}->{test}"] = result
+        cache[f"face:{source} {test}"] = result
 
         return result
 
