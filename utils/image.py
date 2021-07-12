@@ -4,7 +4,10 @@ import boto3
 import random
 import string
 from requests.exceptions import ConnectionError
+from pathlib import Path
 
+
+Path("./img_cache").mkdir(parents=True, exist_ok=True)
 s3_client = boto3.client(
     service_name="s3",
     endpoint_url="https://gateway.ap1.storjshare.io",
