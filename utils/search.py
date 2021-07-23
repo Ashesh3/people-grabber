@@ -93,4 +93,5 @@ def similar_image(source, test) -> bool:
 
     except Exception as e:
         print("FaceAPI Error :", e)
+        cache[f"face:{source} {test}"] = False
     return False
