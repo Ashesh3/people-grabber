@@ -41,11 +41,16 @@ async def search(thread_id: int, doc_name: str, speciality: str, max_terms: int 
                 face_match_points = MAX_FACE_MATCH_POINTS
             print(f"[{thread_id}][Facebook] FACE MATCH: {face_match_points==MAX_FACE_MATCH_POINTS}")
         matched_keywords = sum([keyword.lower() in result_content for keyword in all_keywords])
-        confidence = round(((matched_keywords + face_match_points) / (total_keywords + MAX_FACE_MATCH_POINTS)) * 100, 2)
+        confidence = round(
+            ((matched_keywords + face_match_points) / (total_keywords + MAX_FACE_MATCH_POINTS)) * 100, 2
+        )
         if confidence > 0:
             search_hits.append({"link": result, "confidence": confidence})
     print(f"[{thread_id}][Facebook] Done")
-    return {"source": "facebook", "results": sorted(search_hits, key=lambda x: x["confidence"], reverse=True)[:max_terms]}
+    return {
+        "source": "facebook",
+        "results": sorted(search_hits, key=lambda x: x["confidence"], reverse=True)[:max_terms],
+    }
 
 
 def get_facebook_headers(host, useragent):
@@ -70,6 +75,8 @@ def get_profile(thread_id: int, fb_link: str) -> Tuple[str, str]:
     fb_id = get_facebook_username(fb_link)
     if f"facebook:{fb_id}" in cache:
         return cache[f"facebook:{fb_id}"]
+    if config["DRY_RUN"]:
+        return ("", "")
     global facebook_index
     acc_data = ("", "")
     for tries in range(10):
@@ -77,7 +84,9 @@ def get_profile(thread_id: int, fb_link: str) -> Tuple[str, str]:
             facebook_index += 1
             fb_acc = facebook_index % len(facebook_accs)
             try:
-                scrap_data = facebook_scraper.get_profile(fb_id, cookies=cookiejar_from_dict(facebook_accs[fb_acc]))
+                scrap_data = facebook_scraper.get_profile(
+                    fb_id, cookies=cookiejar_from_dict(facebook_accs[fb_acc])
+                )
                 print(f"[{thread_id}][Facebook] [{fb_acc+1}] Scraping [{fb_id}]")
                 acc_pic = json.loads(json.dumps(scrap_data)).get("profile_picture", "")
                 acc_data = (json.dumps(scrap_data), put_image(acc_pic))
@@ -96,7 +105,7 @@ def get_profile(thread_id: int, fb_link: str) -> Tuple[str, str]:
 
 def get_facebook_username(fb_link):
     if "profile.php" in fb_link:
-        return fb_link
+        return "profile.php" + fb_link.split("/profile.php")[1]
     prefix = "/"
     if "/people/" in fb_link:
         prefix = "/people/"
@@ -132,7 +141,9 @@ def fb_people_search(name):
     pages = [
         f"https://facebook.com{results[i].get('href').split('refid')[0]}"
         for i in range(len(results))
-        if len(results[i].select("img")) > 0 and results[i].get("href") and "add_friend" not in results[i].get("href")
+        if len(results[i].select("img")) > 0
+        and results[i].get("href")
+        and "add_friend" not in results[i].get("href")
     ]
     cache[f"facebook_people:{name}"] = pages
     return pages
