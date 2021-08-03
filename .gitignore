@@ -2,7 +2,7 @@
 .vscode
 *.xlsx
 __pycache__
-cache*
+cache.sqlite
 config.json
 img_cache
 tmp.py
