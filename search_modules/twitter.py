@@ -6,13 +6,16 @@ from utils.search import keywords_from_speciality
 from utils.cache import cache
 from utils.config import config
 
+twitter_accs = config["TWITTER_COOKIES"]
+twitter_index = 0
+
 
 async def search(thread_id: int, doc_name: str, speciality: str, max_terms: int = 10) -> ModuleResults:
     print(f"[{thread_id}][Twitter] Searching")
     search_hits: List[ModuleResult] = []
     users: Dict[str, TwitterResults] = twitter_query(doc_name.title(), "users")  # type:ignore
     print(f"[{thread_id}][Twitter] {len(users)} result(s)")
-    for user_key in list(users.keys())[:10]:
+    for user_key in list(users.keys())[:max_terms]:
         if doc_name.split(" ")[0].lower() not in users[user_key]["name"].lower():
             continue
         screen_name = users[user_key]["screen_name"]
@@ -29,39 +32,50 @@ async def search(thread_id: int, doc_name: str, speciality: str, max_terms: int 
         if confidence > 0:
             search_hits.append({"link": f"https://twitter.com/{screen_name}", "confidence": confidence})
     print(f"[{thread_id}][Twitter] Done")
-    return {"source": "twitter", "results": sorted(search_hits, key=lambda x: x["confidence"], reverse=True)[:max_terms]}
+    return {
+        "source": "twitter",
+        "results": sorted(search_hits, key=lambda x: x["confidence"], reverse=True)[:max_terms],
+    }
 
 
 def get_twitter_likes(user_id: str):
-    response = requests.get(
-        "https://twitter.com/i/api/graphql/Ay8caIt8NEaf_ulIvhl4uQ/Likes",
-        headers={
-            "Host": "twitter.com",
-            "X-Csrf-Token": config["TWITTER_X_CSRF_TOKEN"],
-            "Authorization": f"Bearer {config['TWITTER_AUTHORIZATION']}",
-            "Content-Type": "application/json",
-            "X-Twitter-Auth-Type": "OAuth2Session",
-            "X-Twitter-Active-User": "yes",
-            "Accept": "*/*",
-            "Referer": "https://twitter.com/BrentToderian/likes",
-            "Accept-Language": "en-US,en;q=0.9",
-        },
-        params=(
-            (
-                "variables",
-                '{"userId":"'
-                + user_id
-                + '","count":100,"withHighlightedLabel":false,"withTweetQuoteCount":false,"includePromotedContent":false,"withTweetResult":true,"withReactions":false,"withSuperFollowsTweetFields":false,"withSuperFollowsUserFields":false,"withUserResults":false,"withClientEventToken":false,"withBirdwatchNotes":false,"withBirdwatchPivots":false,"withVoice":false}',
-            ),
-        ),
-        cookies={
-            "auth_token": config["TWITTER_AUTH_TOKEN"],
-            "ct0": config["TWITTER_X_CSRF_TOKEN"],
-        },
-    )
-    if response.status_code != 200:
-        raise RuntimeError(f"Twitter Likes error {response.status_code}")
-    return response.text
+    global twitter_index
+    for tries in range(10):
+        try:
+            twitter_index += 1
+            twitter_acc = twitter_index % len(twitter_accs)
+            response = requests.get(
+                "https://twitter.com/i/api/graphql/Ay8caIt8NEaf_ulIvhl4uQ/Likes",
+                headers={
+                    "Host": "twitter.com",
+                    "X-Csrf-Token": twitter_accs[twitter_acc]["X_CSRF_TOKEN"],
+                    "Authorization": f"Bearer {twitter_accs[twitter_acc]['AUTHORIZATION']}",
+                    "Content-Type": "application/json",
+                    "X-Twitter-Auth-Type": "OAuth2Session",
+                    "X-Twitter-Active-User": "yes",
+                    "Accept": "*/*",
+                    "Referer": "https://twitter.com/BrentToderian/likes",
+                    "Accept-Language": "en-US,en;q=0.9",
+                },
+                params=(
+                    (
+                        "variables",
+                        '{"userId":"'
+                        + user_id
+                        + '","count":100,"withHighlightedLabel":false,"withTweetQuoteCount":false,"includePromotedContent":false,"withTweetResult":true,"withReactions":false,"withSuperFollowsTweetFields":false,"withSuperFollowsUserFields":false,"withUserResults":false,"withClientEventToken":false,"withBirdwatchNotes":false,"withBirdwatchPivots":false,"withVoice":false}',
+                    ),
+                ),
+                cookies={
+                    "auth_token": twitter_accs[twitter_acc]["AUTH_TOKEN"],
+                    "ct0": twitter_accs[twitter_acc]["X_CSRF_TOKEN"],
+                },
+            )
+            if response.status_code != 200:
+                raise RuntimeError(f"Twitter Likes error {response.status_code} [Try {tries}]")
+            return response.text
+        except Exception:
+            pass
+    raise RuntimeError("[Twitter] Fatal Error Getting Likes")
 
 
 def twitter_query(query, search_type) -> Union[str, Dict[str, TwitterResults]]:
@@ -69,12 +83,15 @@ def twitter_query(query, search_type) -> Union[str, Dict[str, TwitterResults]]:
         return cache[f"{query}:{search_type}"]
     if config["DRY_RUN"]:
         return {}
+    global twitter_index
     for _ in range(15):
         try:
             if search_type == "likes":
                 query_result = get_twitter_likes(query)
                 cache[f"{query}:{search_type}"] = query_result
                 return query_result
+            twitter_index += 1
+            twitter_acc = twitter_index % len(twitter_accs)
             param = {
                 "include_profile_interstitial_type": "1",
                 "include_blocking": "1",
@@ -111,13 +128,13 @@ def twitter_query(query, search_type) -> Union[str, Dict[str, TwitterResults]]:
                 url="https://twitter.com/i/api/2/search/adaptive.json",
                 params=param,
                 cookies={
-                    "auth_token": config["TWITTER_AUTH_TOKEN"],
-                    "ct0": config["TWITTER_X_CSRF_TOKEN"],
+                    "auth_token": twitter_accs[twitter_acc]["AUTH_TOKEN"],
+                    "ct0": twitter_accs[twitter_acc]["X_CSRF_TOKEN"],
                 },
                 headers={
                     "Host": "twitter.com",
-                    "X-Csrf-Token": config["TWITTER_X_CSRF_TOKEN"],
-                    "Authorization": f"Bearer {config['TWITTER_AUTHORIZATION']}",
+                    "X-Csrf-Token": twitter_accs[twitter_acc]["X_CSRF_TOKEN"],
+                    "Authorization": f"Bearer {twitter_accs[twitter_acc]['AUTHORIZATION']}",
                     "Content-Type": "application/json",
                     "X-Twitter-Auth-Type": "OAuth2Session",
                     "X-Twitter-Active-User": "yes",

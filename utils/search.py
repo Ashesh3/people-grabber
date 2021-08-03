@@ -13,13 +13,19 @@ google_api_index = 0
 
 
 def keywords_from_speciality(speciality: str) -> List[KeywordSet]:
-    if speciality in config["KEYWORDS"]:
-        return config["KEYWORDS"][speciality]
+    for keyword in config["KEYWORDS"]:
+        if speciality.startswith(keyword):
+            return config["KEYWORDS"][keyword]
     raise ValueError(f"Invalid Speciality: {speciality}")
 
 
 def get_search_query(doc_name: str, site: str, keyword: KeywordSet) -> str:
-    return f'(intitle:"{doc_name}") site:{site} ' + '"' + f"\" {keyword['operator']} \"".join(keyword["keywords"]) + '"'
+    return (
+        f'(intitle:"{doc_name}") site:{site} '
+        + '"'
+        + f"\" {keyword['operator']} \"".join(keyword["keywords"])
+        + '"'
+    )
 
 
 def google_search(search_term: str, search_type, max_terms: int = 5) -> List[GoogleResults]:
@@ -36,7 +42,7 @@ def google_search(search_term: str, search_type, max_terms: int = 5) -> List[Goo
         try:
             res = requests.get(
                 url="https://customsearch.googleapis.com/customsearch/v1"
-                + "?cx=400252859a1a12146"
+                + f"?cx={'400252859a1a12146' if search_type=='images' else 'b95eae56201592bc4'}"
                 + f"&q={quote_plus(search_term)}"
                 + f"&searchType={'image&imgType=face' if search_type=='images' else 'search_type_undefined'}"
                 + f"&key={google_keys[google_api_index % len(google_keys)]}"
@@ -62,7 +68,9 @@ def google_search(search_term: str, search_type, max_terms: int = 5) -> List[Goo
                 return final_image_results[:max_terms]
         except Exception as e:
             google_api_index += 1
-            print(f"GoogleAPI Switching key... {google_api_index % len(google_keys)} [{e.__class__}: {e}] [{json_data}]")
+            print(
+                f"GoogleAPI Switching key... {google_api_index % len(google_keys)} [{e.__class__}: {e}] [{json_data}]"
+            )
             err_count += 1
     raise ValueError("Error in GoogleAPI..")
 

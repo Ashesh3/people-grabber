@@ -77,7 +77,6 @@ def get_profile(thread_id: int, fb_link: str) -> Tuple[str, str]:
         return cache[f"facebook:{fb_id}"]
     if config["DRY_RUN"]:
         return ("", "")
-    global facebook_index
     acc_data = ("", "")
     for tries in range(10):
         try:

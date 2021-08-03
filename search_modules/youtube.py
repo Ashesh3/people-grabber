@@ -24,7 +24,9 @@ async def search(thread_id: int, doc_name: str, speciality: str, max_terms: int 
         matched_keywords = sum([keyword.lower() in result_content for keyword in all_keywords])
         confidence = round(((matched_keywords) / (total_keywords)) * 100, 2)
         if confidence > 0:
-            search_hits.append({"link": result["channelID"], "confidence": confidence})
+            search_hits.append(
+                {"link": f"https://www.youtube.com/channel/{result['channelID']}", "confidence": confidence}
+            )
     print(f"[{thread_id}][Facebook] Done")
     return {
         "source": "youtube",
@@ -35,7 +37,8 @@ async def search(thread_id: int, doc_name: str, speciality: str, max_terms: int 
 def youtube_search(search_term: str) -> List[Dict[str, str]]:
     if f"youtube_search:{search_term}" in cache:
         return cache[f"youtube_search:{search_term}"]
-
+    if config["DRY_RUN"]:
+        return []
     global google_api_index
     err_count = 0
     json_data = {}
