@@ -91,7 +91,7 @@ def get_profile(thread_id: int, fb_link: str) -> Tuple[str, str]:
                 acc_data = (json.dumps(scrap_data), put_image(acc_pic))
                 cache[f"facebook:{fb_id}"] = acc_data
             except TemporarilyBanned as e:
-                sleep(5 * 60)
+                sleep(1 * 60)
                 print(f"[{thread_id}][{facebook_index}][Facebook] Temporarily Banned [Try {tries}]")
             except Exception as e:
                 print(f"[Facebook] [{fb_acc}] [{fb_id}] [{e}]")
@@ -116,7 +116,7 @@ def fb_people_search(name):
         return cache[f"facebook_people:{name}"]
     if config["DRY_RUN"]:
         return []
-    sleep(30)
+    sleep(10)
     global facebook_index
     facebook_index += 1
     fb_acc = facebook_index % len(facebook_accs)
