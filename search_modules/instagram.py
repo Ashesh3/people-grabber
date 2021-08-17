@@ -1,6 +1,3 @@
-from time import sleep
-
-from requests.cookies import cookiejar_from_dict
 from utils.image import put_image
 import requests
 from typing import List, Tuple
@@ -11,7 +8,7 @@ from utils.config import config
 
 MAX_FACE_MATCH_POINTS = 3
 
-insta_accs = config["INSTAGRAM_COOKIES"]
+insta_accs = config["INSTAGRAM_API_KEYS"]
 insta_index = 0
 
 
@@ -34,16 +31,23 @@ async def search(thread_id: int, doc_name: str, speciality: str, max_terms: int 
             face_match_points = MAX_FACE_MATCH_POINTS
         print(f"[{thread_id}][Instagram] FACE MATCH: {face_match_points==MAX_FACE_MATCH_POINTS}")
         matched_keywords = sum([keyword.lower() in result_content for keyword in all_keywords])
-        confidence = round(((matched_keywords + face_match_points) / (total_keywords + MAX_FACE_MATCH_POINTS)) * 100, 2)
+        confidence = round(
+            ((matched_keywords + face_match_points) / (total_keywords + MAX_FACE_MATCH_POINTS)) * 100, 2
+        )
         if confidence > 0:
-            search_hits.append({"link": f"https://www.instagram.com/{instagram_profile[0]}", "confidence": confidence})
+            search_hits.append(
+                {"link": f"https://www.instagram.com/{instagram_profile[0]}", "confidence": confidence}
+            )
     print(f"[{thread_id}][Instagram] Done")
-    return {"source": "instagram", "results": sorted(search_hits, key=lambda x: x["confidence"], reverse=True)[:max_terms]}
+    return {
+        "source": "instagram",
+        "results": sorted(search_hits, key=lambda x: x["confidence"], reverse=True)[:max_terms],
+    }
 
 
 def instagram_search(name, max_terms=5) -> List[Tuple[str, str, str]]:
-    if f"instagram_search:{name}:{max_terms}" in cache:
-        return cache[f"instagram_search:{name}:{max_terms}"]
+    if f"instagram_search:{name}" in cache:
+        return cache[f"instagram_search:{name}"][:max_terms]
     if config["DRY_RUN"]:
         return []
     global insta_index
@@ -53,59 +57,55 @@ def instagram_search(name, max_terms=5) -> List[Tuple[str, str, str]]:
             insta_index += 1
             insta_acc = insta_index % len(insta_accs)
             tries += 1
-            api_results = requests.get(
-                f"https://www.instagram.com/web/search/topsearch/?context=blended&query={name}&rank_token=0.09816429322112841&include_reel=false",
+            api_results = requests.request(
+                "GET",
+                "https://instagram47.p.rapidapi.com/search",
                 headers={
-                    "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
-                    "accept-language": "en-US,en;q=0.9",
-                    "cache-control": "no-cache",
-                    "pragma": "no-cache",
-                    "sec-ch-ua": '" Not;A Brand";v="99", "Microsoft Edge";v="91", "Chromium";v="91"',
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36",
+                    "x-rapidapi-key": insta_accs[insta_acc],
+                    "x-rapidapi-host": "instagram47.p.rapidapi.com",
                 },
-                cookies=cookiejar_from_dict(insta_accs[insta_acc]),
+                params={"search": name.replace(" ", "%20", 1).replace("-", "").split(" ")[0]},
             ).json()
+            if api_results["statusCode"] in [204, 202]:
+                cache[f"instagram_search:{name}"] = []
+                return []
+            api_results = api_results["body"]
             results = []
             for item in api_results.get("users", [])[:max_terms]:
-                profile_data = get_picture_bio(item["user"]["username"])
+                profile_data = get_picture_bio(item["user"]["pk"])
                 results.append((item["user"]["username"], put_image(profile_data[0]), profile_data[1]))
-            cache[f"instagram_search:{name}:{max_terms}"] = results
+            cache[f"instagram_search:{name}"] = results
             return results
-        except Exception:
-            pass
+        except Exception as e:
+            print("[Instagram] Search Error: ", e)
     raise RuntimeError("[Instagram] Fatal Error Searching")
 
 
 def get_picture_bio(username) -> Tuple[str, str]:
     print(f"[Instagram] Scraping {username}")
+    if f"instagram_details:{username}" in cache:
+        return cache[f"instagram_details:{username}"]
     bio = ""
     tries = 0
     global insta_index
-    tries = 0
     while tries < len(insta_accs):
         try:
             insta_index += 1
             insta_acc = insta_index % len(insta_accs)
             tries += 1
-            profile_info = requests.get(
-                f"https://www.instagram.com/{username}/?__a=1",
+            profile_info = requests.request(
+                "GET",
+                "https://instagram47.p.rapidapi.com/email_and_details",
                 headers={
-                    "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
-                    "accept-language": "en-US,en;q=0.9",
-                    "cache-control": "no-cache",
-                    "pragma": "no-cache",
-                    "sec-ch-ua": '" Not;A Brand";v="99", "Microsoft Edge";v="91", "Chromium";v="91"',
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36",
+                    "x-rapidapi-key": insta_accs[insta_acc],
+                    "x-rapidapi-host": "instagram47.p.rapidapi.com",
                 },
-                cookies=cookiejar_from_dict(insta_accs[insta_acc]),
-            )
-            if profile_info.status_code == 429:
-                print("[Instagram] Rate Limit.. waiting 60s")
-                sleep(60)
-                continue
-            bio = profile_info.json()["graphql"]["user"]["biography"]
-            picture = profile_info.json()["graphql"]["user"]["profile_pic_url_hd"]
-            return picture, bio
+                params={"userid": username},
+            ).json()["body"]
+            bio = profile_info["biography"]
+            picture = profile_info["hd_profile_pic_versions"][-1]["url"]
+            cache[f"instagram_details:{username}"] = (picture, bio)
+            return (picture, bio)
         except Exception:
             pass
     return ("", "")
