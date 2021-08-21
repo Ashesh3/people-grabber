@@ -3,6 +3,8 @@ import pandas as pd
 from utils.types import *
 from styleframe import StyleFrame
 import threading
+from utils.drive import consolidate_push
+from utils.config import config
 
 
 class DataReader:
@@ -28,7 +30,9 @@ class DataReader:
         if site_name not in ["linkedin", "twitter", "youtube", "facebook", "instagram", "reddit"]:
             raise ValueError("Invalid Sitename")
 
-        self._df.at[row_no, f"{site_name}Url"] = ", \n".join([f'{result["confidence"]}:{result["link"]}' for result in data])
+        self._df.at[row_no, f"{site_name}Url"] = ", \n".join(
+            [f'{result["confidence"]}:{result["link"]}' for result in data]
+        )
 
     def get_rows(self, start: int = 0, end=float("inf")) -> Tuple[int, Any]:
         with self._lock:
@@ -48,3 +52,13 @@ class DataReader:
         else:
             self._is_saving = True
             StyleFrame(self._df).to_excel(self._save_file_name).save()
+
+    def upload(self):
+        print("====Uploading Data====")
+        consolidate_push(
+            config["REMOTE_FILE"]["id"],
+            self._df,
+            config["REMOTE_FILE"]["identifier"],
+            config["REMOTE_FILE"]["sheet"],
+        )
+        print("====Data Successfully Uplaoaded====")
