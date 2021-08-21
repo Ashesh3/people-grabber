@@ -1,6 +1,5 @@
 from utils.image import put_image
 import warnings, requests, json
-from requests.cookies import cookiejar_from_dict
 from typing import List, Tuple
 from utils.search import keywords_from_speciality, google_search, similar_image
 from time import sleep
@@ -8,12 +7,45 @@ from utils.types import *
 from utils.cache import cache
 from utils.config import config
 from bs4 import BeautifulSoup
-import requests
+from utils.drive import get_file
 import facebook_scraper
-from facebook_scraper.exceptions import TemporarilyBanned
+from facebook_scraper.exceptions import TemporarilyBanned, AccountDisabled
+from facebook_scraper import _scraper
+from facebook_scraper import FacebookScraper
 
 warnings.filterwarnings("ignore")
-facebook_accs = config["FACEBOOK_COOKIES"]
+facebook_accs_sheet = get_file(config["FACEBOOK_ACCOUNT_FILE"]["id"], config["FACEBOOK_ACCOUNT_FILE"]["sheet"])
+facebook_accs_data = facebook_accs_sheet.get_all_values()[1:]
+facebook_accs = []
+
+for index, acc in enumerate(facebook_accs_data):
+    if acc[3] in ["Active", ""]:
+        if f"facebook_login:{acc[0]}:{acc[1]}" in cache:
+            facebook_accs.append(cache[f"facebook_login:{acc[0]}:{acc[1]}"])
+            continue
+        _scraper = FacebookScraper()
+        try:
+            _scraper.login(acc[0], acc[1])
+            if not _scraper.is_logged_in:
+                raise RuntimeError("Login Error")
+        except Exception as e:
+            error = str(e).replace("Login approval needed", "Account Disabled")
+            print(f"[Facebook] Login Error -> {acc[0]} : {e}")
+            facebook_accs_sheet.update(f"D{index+2}", str(e))
+            facebook_accs_sheet.format(
+                f"D{index+2}",
+                {"textFormat": {"bold": True, "foregroundColor": {"red": 1.0, "green": 0.0, "blue": 0.0}}},
+            )
+            continue
+        facebook_scraper.unset_cookies()
+        facebook_accs.append([f"D{index+2}", _scraper.session.cookies])
+        facebook_accs_sheet.update(f"D{index+2}", "Active")
+        facebook_accs_sheet.format(
+            f"D{index+2}",
+            {"textFormat": {"bold": True, "foregroundColor": {"red": 0.2039, "green": 0.6588, "blue": 0.3254}}},
+        )
+        cache[f"facebook_login:{acc[0]}:{acc[1]}"] = [f"D{index+2}", _scraper.session.cookies]
+
 facebook_index = 0
 MAX_FACE_MATCH_POINTS = 3
 
@@ -70,7 +102,6 @@ def get_facebook_headers(host, useragent):
 
 
 def get_profile(thread_id: int, fb_link: str) -> Tuple[str, str]:
-    fb_link = fb_link.replace("https://facebook.com", "https://mbasic.facebook.com")
     global facebook_index
     fb_id = get_facebook_username(fb_link)
     if f"facebook:{fb_id}" in cache:
@@ -79,26 +110,44 @@ def get_profile(thread_id: int, fb_link: str) -> Tuple[str, str]:
         return ("", "")
     acc_data = ("", "")
     for tries in range(10):
+        facebook_index += 1
+        fb_acc = facebook_index % len(facebook_accs)
         try:
-            facebook_index += 1
-            fb_acc = facebook_index % len(facebook_accs)
-            try:
-                scrap_data = facebook_scraper.get_profile(
-                    fb_id, cookies=cookiejar_from_dict(facebook_accs[fb_acc])
-                )
-                print(f"[{thread_id}][Facebook] [{fb_acc+1}] Scraping [{fb_id}]")
-                acc_pic = json.loads(json.dumps(scrap_data)).get("profile_picture", "")
-                acc_data = (json.dumps(scrap_data), put_image(acc_pic))
-                cache[f"facebook:{fb_id}"] = acc_data
-            except TemporarilyBanned as e:
-                sleep(1 * 60)
-                print(f"[{thread_id}][{facebook_index}][Facebook] Temporarily Banned [Try {tries}]")
-            except Exception as e:
-                print(f"[Facebook] [{fb_acc}] [{fb_id}] [{e}]")
-                cache[f"facebook:{fb_id}"] = acc_data
+            print(f"[{thread_id}][Facebook] [{fb_acc+1}] Scraping [{fb_id}]")
+            scrap_data = facebook_scraper.get_profile(fb_id, cookies=facebook_accs[fb_acc][1])
+            acc_pic = json.loads(json.dumps(scrap_data)).get("profile_picture", "")
+            acc_data = (json.dumps(scrap_data), put_image(acc_pic))
+            cache[f"facebook:{fb_id}"] = acc_data
             return acc_data
-        except Exception:
-            pass
+        except AccountDisabled as e:
+            print(f"[{thread_id}][{facebook_index}][Facebook] Account Disabled [Try {tries}]")
+            facebook_accs_sheet.update(facebook_accs[fb_acc][0], "Account Disabled")
+            facebook_accs_sheet.format(
+                facebook_accs[fb_acc][0],
+                {
+                    "textFormat": {
+                        "bold": True,
+                        "foregroundColor": {"red": 1, "green": 0, "blue": 0},
+                    }
+                },
+            )
+        except TemporarilyBanned as e:
+            sleep(1 * 60)
+            print(f"[{thread_id}][{facebook_index}][Facebook] Temporarily Banned [Try {tries}]")
+            facebook_accs_sheet.update(facebook_accs[fb_acc][0], "Temporarily Ratelimited")
+            facebook_accs_sheet.format(
+                facebook_accs[fb_acc][0],
+                {
+                    "textFormat": {
+                        "bold": True,
+                        "foregroundColor": {"red": 0, "green": 0, "blue": 1},
+                    }
+                },
+            )
+        except Exception as e:
+            print(f"[Facebook] [{fb_acc}] [{fb_id}] [{e}]")
+            cache[f"facebook:{fb_id}"] = acc_data
+            return acc_data
     raise RuntimeError("[Facebook] Fatal Error Scraping Profile")
 
 
@@ -131,14 +180,14 @@ def fb_people_search(name):
             ("source", "filter"),
             ("isTrending", "0"),
         ),
-        cookies=facebook_accs[fb_acc],
+        cookies=facebook_accs[fb_acc][1],
     )
     soup = BeautifulSoup(response.content, "html.parser")
     if not soup.select("#BrowseResultsContainer"):
         return []
     results = soup.select("#BrowseResultsContainer")[0].select("table a")
     pages = [
-        f"https://facebook.com{results[i].get('href').split('refid')[0]}"
+        f"https://mbasic.facebook.com{results[i].get('href').split('refid')[0]}"
         for i in range(len(results))
         if len(results[i].select("img")) > 0
         and results[i].get("href")

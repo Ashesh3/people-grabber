@@ -1,14 +1,48 @@
 from utils.image import put_image
-import requests
+from os import path
+from shutil import rmtree
 from typing import List, Tuple
 from utils.search import keywords_from_speciality, google_search, similar_image
 from utils.types import *
 from utils.cache import cache
 from utils.config import config
+from utils.drive import get_file
+from igramscraper.instagram import Instagram
 
 MAX_FACE_MATCH_POINTS = 3
 
-insta_accs = config["INSTAGRAM_API_KEYS"]
+instagram_accs_sheet = get_file(config["INSTAGRAM_ACCOUNT_FILE"]["id"], config["INSTAGRAM_ACCOUNT_FILE"]["sheet"])
+instagram_accs_data = instagram_accs_sheet.get_all_values()[1:]
+instagram_accs = []
+
+for index, acc in enumerate(instagram_accs_data):
+    if acc[3] in ["Active", ""]:
+        if f"instagram_login:{acc[0]}:{acc[1]}" in cache:
+            instagram_accs.append(cache[f"instagram_login:{acc[0]}:{acc[1]}"])
+            continue
+        instagram = Instagram()
+        try:
+            instagram.with_credentials(acc[0], acc[1])
+            instagram.login(True)
+        except Exception as e:
+            print(f"[instagram] Login Error -> {acc[0]} : {e}")
+            instagram_accs_sheet.update(f"D{index+2}", "Account Disabled")
+            instagram_accs_sheet.format(
+                f"D{index+2}",
+                {"textFormat": {"bold": True, "foregroundColor": {"red": 1.0, "green": 0.0, "blue": 0.0}}},
+            )
+            continue
+        instagram_accs.append([f"D{index+2}", instagram.user_session])
+        instagram_accs_sheet.update(f"D{index+2}", "Active")
+        instagram_accs_sheet.format(
+            f"D{index+2}",
+            {"textFormat": {"bold": True, "foregroundColor": {"red": 0.2039, "green": 0.6588, "blue": 0.3254}}},
+        )
+        cache[f"instagram_login:{acc[0]}:{acc[1]}"] = [f"D{index+2}", instagram.user_session]
+
+if path.exists("./sessions"):
+    rmtree("./sessions")
+
 insta_index = 0
 
 
@@ -52,28 +86,18 @@ def instagram_search(name, max_terms=5) -> List[Tuple[str, str, str]]:
         return []
     global insta_index
     tries = 0
-    while tries < len(insta_accs):
+    while tries < len(instagram_accs):
+        insta_index += 1
+        insta_acc = insta_index % len(instagram_accs)
+        tries += 1
         try:
-            insta_index += 1
-            insta_acc = insta_index % len(insta_accs)
-            tries += 1
-            api_results = requests.request(
-                "GET",
-                "https://instagram47.p.rapidapi.com/search",
-                headers={
-                    "x-rapidapi-key": insta_accs[insta_acc],
-                    "x-rapidapi-host": "instagram47.p.rapidapi.com",
-                },
-                params={"search": name.replace(" ", "%20", 1).replace("-", "").split(" ")[0]},
-            ).json()
-            if api_results["statusCode"] in [204, 202]:
-                cache[f"instagram_search:{name}"] = []
-                return []
-            api_results = api_results["body"]
+            instagram_instance = Instagram()
+            instagram_instance.user_session = instagram_accs[insta_acc][1]
+            api_results = instagram_instance.search_accounts_by_username(name)
             results = []
-            for item in api_results.get("users", [])[:max_terms]:
-                profile_data = get_picture_bio(item["user"]["pk"])
-                results.append((item["user"]["username"], put_image(profile_data[0]), profile_data[1]))
+            for acc in api_results[:max_terms]:
+                profile_data = get_picture_bio(acc.username)
+                results.append((acc.username, put_image(profile_data[0]), profile_data[1]))
             cache[f"instagram_search:{name}"] = results
             return results
         except Exception as e:
@@ -88,24 +112,18 @@ def get_picture_bio(username) -> Tuple[str, str]:
     bio = ""
     tries = 0
     global insta_index
-    while tries < len(insta_accs):
+    while tries < len(instagram_accs):
+        insta_index += 1
+        insta_acc = insta_index % len(instagram_accs)
+        tries += 1
         try:
-            insta_index += 1
-            insta_acc = insta_index % len(insta_accs)
-            tries += 1
-            profile_info = requests.request(
-                "GET",
-                "https://instagram47.p.rapidapi.com/email_and_details",
-                headers={
-                    "x-rapidapi-key": insta_accs[insta_acc],
-                    "x-rapidapi-host": "instagram47.p.rapidapi.com",
-                },
-                params={"userid": username},
-            ).json()["body"]
-            bio = profile_info["biography"]
-            picture = profile_info["hd_profile_pic_versions"][-1]["url"]
-            cache[f"instagram_details:{username}"] = (picture, bio)
-            return (picture, bio)
+            instagram_instance = Instagram()
+            instagram_instance.user_session = instagram_accs[insta_acc][1]
+            profile_info = instagram_instance.get_account(username)
+            bio = profile_info.biography
+            picture = profile_info.get_profile_picture_url()
+            cache[f"instagram_details:{username}"] = (str(picture), bio or "")
+            return (str(picture), bio or "")
         except Exception:
             pass
     return ("", "")

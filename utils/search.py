@@ -6,16 +6,23 @@ from utils.types import *
 from utils.config import config
 from utils.cache import cache
 from utils.image import *
+from utils.drive import get_file
 
+google_api_sheet = get_file(config["GOOGLE_API_FILE"]["id"], config["GOOGLE_API_FILE"]["sheet"])
+google_api_data = google_api_sheet.get_all_values()[1:]
+google_api_keys = [
+    [f"B{i+2}", key[0]] for i, key in enumerate(google_api_data) if "suspended" not in key[1].lower()
+]
 
-google_keys = config["GOOGLE_SEARCH_KEYS"]
 google_api_index = 0
+
+keywords = get_file(config["KEYWORDS_FILE"]["id"], config["KEYWORDS_FILE"]["sheet"]).get_all_values()[1:]
 
 
 def keywords_from_speciality(speciality: str) -> List[KeywordSet]:
-    for keyword in config["KEYWORDS"]:
-        if speciality.startswith(keyword):
-            return config["KEYWORDS"][keyword]
+    for keyword in keywords:
+        if speciality.lower().startswith(keyword[0].lower()):
+            return [{"keywords": keyword[1].split(","), "operator": "OR"}]
     raise ValueError(f"Invalid Speciality: {speciality}")
 
 
@@ -38,14 +45,14 @@ def google_search(search_term: str, search_type, max_terms: int = 5) -> List[Goo
     global google_api_index
     err_count = 0
     json_data = {}
-    while err_count < len(google_keys):
+    while err_count < len(google_api_keys):
         try:
             res = requests.get(
                 url="https://customsearch.googleapis.com/customsearch/v1"
                 + f"?cx={'400252859a1a12146' if search_type=='images' else 'b95eae56201592bc4'}"
                 + f"&q={quote_plus(search_term)}"
                 + f"&searchType={'image&imgType=face' if search_type=='images' else 'search_type_undefined'}"
-                + f"&key={google_keys[google_api_index % len(google_keys)]}"
+                + f"&key={google_api_keys[google_api_index % len(google_api_keys)][1]}"
             )
             json_data = res.json()
             if "error" in json_data:
@@ -69,8 +76,19 @@ def google_search(search_term: str, search_type, max_terms: int = 5) -> List[Goo
         except Exception as e:
             google_api_index += 1
             print(
-                f"GoogleAPI Switching key... {google_api_index % len(google_keys)} [{e.__class__}: {e}] [{json_data}]"
+                f"GoogleAPI Switching key... {google_api_index % len(google_api_keys)} [{e.__class__}: {e}] [{json_data}]"
             )
+            if "suspended" in str(e).lower():
+                google_api_sheet.update(google_api_keys[google_api_index][0], "Key Suspended")
+                google_api_sheet.format(
+                    google_api_keys[google_api_index][0],
+                    {
+                        "textFormat": {
+                            "bold": True,
+                            "foregroundColor": {"red": 1, "green": 0, "blue": 0},
+                        }
+                    },
+                )
             err_count += 1
     raise ValueError("Error in GoogleAPI..")
 
