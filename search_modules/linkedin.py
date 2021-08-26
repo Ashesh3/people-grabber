@@ -31,10 +31,15 @@ async def search(thread_id: int, doc_name: str, speciality: str, max_terms: int 
             clean_data(linkedin_profile_json)
             linkedin_profile = json.dumps(linkedin_profile_json)
             result_content = linkedin_profile.lower()
-            matched_keywords = sum([keyword.lower() in result_content for keyword in keyword_set["keywords"]])
-            confidence = round((matched_keywords / total_keywords) * 100, 2)
+            matched_keywords = []
+            for keyword in keyword_set["keywords"]:
+                if keyword.lower() in result_content:
+                    matched_keywords.append(keyword)
+            confidence = round((len(matched_keywords) / total_keywords) * 100, 2)
             if confidence > 0:
-                search_hits.append({"link": result["link"], "confidence": confidence})
+                search_hits.append(
+                    {"link": result["link"], "confidence": confidence, "keywords": matched_keywords}
+                )
     print(f"[{thread_id}][Linkedin] Done")
     return {
         "source": "linkedin",

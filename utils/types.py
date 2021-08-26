@@ -15,6 +15,7 @@ class GoogleResults(TypedDict):
 class ModuleResult(TypedDict):
     link: str
     confidence: float
+    keywords: List[str]
 
 
 class ModuleResults(TypedDict):

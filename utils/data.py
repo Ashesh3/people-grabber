@@ -12,14 +12,7 @@ class DataReader:
         self._save_file_name = save_name
         self._df = pd.read_excel(
             file_name,
-            converters={
-                "linkedinUrl": str,
-                "instagramUrl": str,
-                "twitterUrl": str,
-                "redditUrl": str,
-                "youtubeUrl": str,
-                "facebookUrl": str,
-            },
+            dtype=str,
         )
         self._size = len(self._df.index)
         self._is_saving = False
@@ -34,13 +27,20 @@ class DataReader:
             [f'{result["confidence"]}:{result["link"]}' for result in data]
         )
 
+        if f"{site_name}Keywords" not in self._df:
+            self._df[f"{site_name}Keywords"] = ""
+
+        self._df.at[row_no, f"{site_name}Keywords"] = ", \n".join(
+            [", ".join(result["keywords"]) for result in data]
+        )
+
     def get_rows(self, start: int = 0, end=float("inf")) -> Tuple[int, Any]:
         with self._lock:
             if self._is_saving:
                 return (0, False)
             if self._current_row < start:
                 self._current_row = start
-            if self._current_row > min(end, self._df.shape[0]):
+            if self._current_row >= min(end, len(self._df)):
                 return (0, False)
             data = self._current_row, self._df.iloc[self._current_row]
             self._current_row += 1

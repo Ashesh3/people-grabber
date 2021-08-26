@@ -27,10 +27,19 @@ async def search(thread_id: int, doc_name: str, speciality: str, max_terms: int 
 
         total_keywords = len(all_keywords)
         result_content = full_profile.lower()
-        matched_keywords = sum([keyword.lower() in result_content for keyword in all_keywords])
-        confidence = round((matched_keywords / total_keywords) * 100, 2)
+        matched_keywords: List[str] = []
+        for keyword in all_keywords:
+            if keyword.lower() in result_content:
+                matched_keywords.append(keyword)
+        confidence = round((len(matched_keywords) / total_keywords) * 100, 2)
         if confidence > 0:
-            search_hits.append({"link": f"https://twitter.com/{screen_name}", "confidence": confidence})
+            search_hits.append(
+                {
+                    "link": f"https://twitter.com/{screen_name}",
+                    "confidence": confidence,
+                    "keywords": matched_keywords,
+                }
+            )
     print(f"[{thread_id}][Twitter] Done")
     return {
         "source": "twitter",
