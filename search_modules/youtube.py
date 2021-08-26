@@ -26,13 +26,20 @@ async def search(thread_id: int, doc_name: str, speciality: str, max_terms: int 
     for result in search_results:
         total_keywords = len(all_keywords)
         result_content = result["content"].lower()
-        matched_keywords = sum([keyword.lower() in result_content for keyword in all_keywords])
-        confidence = round(((matched_keywords) / (total_keywords)) * 100, 2)
+        matched_keywords = []
+        for keyword in all_keywords:
+            if keyword.lower() in result_content:
+                matched_keywords.append(keyword)
+        confidence = round(((len(matched_keywords)) / (total_keywords)) * 100, 2)
         if confidence > 0:
             search_hits.append(
-                {"link": f"https://www.youtube.com/channel/{result['channelID']}", "confidence": confidence}
+                {
+                    "link": f"https://www.youtube.com/channel/{result['channelID']}",
+                    "confidence": confidence,
+                    "keywords": matched_keywords,
+                }
             )
-    print(f"[{thread_id}][Facebook] Done")
+    print(f"[{thread_id}][Youtube] Done")
     return {
         "source": "youtube",
         "results": sorted(search_hits, key=lambda x: x["confidence"], reverse=True)[:max_terms],

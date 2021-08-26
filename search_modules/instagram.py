@@ -64,13 +64,22 @@ async def search(thread_id: int, doc_name: str, speciality: str, max_terms: int 
         if instagram_profile[1] and similar_image(doc_image, instagram_profile[1]):
             face_match_points = MAX_FACE_MATCH_POINTS
         print(f"[{thread_id}][Instagram] FACE MATCH: {face_match_points==MAX_FACE_MATCH_POINTS}")
-        matched_keywords = sum([keyword.lower() in result_content for keyword in all_keywords])
+        matched_keywords = []
+        for keyword in all_keywords:
+            if keyword.lower() in result_content:
+                matched_keywords.append(keyword)
         confidence = round(
-            ((matched_keywords + face_match_points) / (total_keywords + MAX_FACE_MATCH_POINTS)) * 100, 2
+            ((len(matched_keywords) + face_match_points) / (total_keywords + MAX_FACE_MATCH_POINTS)) * 100, 2
         )
+        if face_match_points > 0:
+            matched_keywords.append("Face Match")
         if confidence > 0:
             search_hits.append(
-                {"link": f"https://www.instagram.com/{instagram_profile[0]}", "confidence": confidence}
+                {
+                    "link": f"https://www.instagram.com/{instagram_profile[0]}",
+                    "confidence": confidence,
+                    "keywords": matched_keywords,
+                }
             )
     print(f"[{thread_id}][Instagram] Done")
     return {
