@@ -41,7 +41,6 @@ async def main(thread_id: int, start: int, stop: int):
         print(traceback.format_exc())
         print(f"[{thread_id}] Exiting... Details Saved...")
         doc_data.save()
-        doc_data.upload()
 
 
 start = int(config["DOCUMENT"]["START"])
@@ -62,5 +61,4 @@ for thread in thread_list:
 
 print(f"[SUCCESS] All Threads Finished! Saving Data...")
 doc_data.save()
-doc_data.upload()
 print(f"[SUCCESS] DONE!")
