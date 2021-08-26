@@ -4,7 +4,7 @@ from shutil import rmtree
 from typing import List, Tuple
 from utils.search import keywords_from_speciality, google_search, similar_image
 from utils.types import *
-from utils.cache import cache
+from utils.cache import cache, account_cache
 from utils.config import config
 from utils.drive import get_file
 from igramscraper.instagram import Instagram
@@ -16,10 +16,10 @@ instagram_accs_data = instagram_accs_sheet.get_all_values()[1:]
 instagram_accs = []
 
 for index, acc in enumerate(instagram_accs_data):
+    if acc[3] == "Active" and f"instagram_login:{acc[0]}:{acc[1]}" in account_cache:
+        instagram_accs.append(account_cache[f"instagram_login:{acc[0]}:{acc[1]}"])
+        continue
     if acc[3] in ["Active", ""]:
-        if f"instagram_login:{acc[0]}:{acc[1]}" in cache:
-            instagram_accs.append(cache[f"instagram_login:{acc[0]}:{acc[1]}"])
-            continue
         instagram = Instagram()
         try:
             instagram.with_credentials(acc[0], acc[1])
@@ -38,7 +38,7 @@ for index, acc in enumerate(instagram_accs_data):
             f"D{index+2}",
             {"textFormat": {"bold": True, "foregroundColor": {"red": 0.2039, "green": 0.6588, "blue": 0.3254}}},
         )
-        cache[f"instagram_login:{acc[0]}:{acc[1]}"] = [f"D{index+2}", instagram.user_session]
+        account_cache[f"instagram_login:{acc[0]}:{acc[1]}"] = [f"D{index+2}", instagram.user_session]
 
 if path.exists("./sessions"):
     rmtree("./sessions")

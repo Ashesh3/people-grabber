@@ -1,6 +1,6 @@
 import requests
 import face_recognition
-from typing import List
+from typing import Dict, List
 from urllib.parse import quote_plus
 from utils.types import *
 from utils.config import config
@@ -16,13 +16,14 @@ google_api_keys = [
 
 google_api_index = 0
 
-keywords = get_file(config["KEYWORDS_FILE"]["id"], config["KEYWORDS_FILE"]["sheet"]).get_all_values()[1:]
+keywords_list = get_file(config["KEYWORDS_FILE"]["id"], config["KEYWORDS_FILE"]["sheet"]).get_all_values()[1:]
+keywords: Dict[str, List[str]] = {key[0].lower(): key[1].split(",") for key in keywords_list}
 
 
 def keywords_from_speciality(speciality: str) -> List[KeywordSet]:
     for keyword in keywords:
-        if speciality.lower().startswith(keyword[0].lower()):
-            return [{"keywords": keyword[1].split(","), "operator": "OR"}]
+        if speciality.lower().startswith(keyword.lower()):
+            return [{"keywords": keywords[keyword], "operator": "OR"}]
     raise ValueError(f"Invalid Speciality: {speciality}")
 
 

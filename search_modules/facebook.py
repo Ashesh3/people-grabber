@@ -4,7 +4,7 @@ from typing import List, Tuple
 from utils.search import keywords_from_speciality, google_search, similar_image
 from time import sleep
 from utils.types import *
-from utils.cache import cache
+from utils.cache import cache, account_cache
 from utils.config import config
 from bs4 import BeautifulSoup
 from utils.drive import get_file
@@ -19,10 +19,10 @@ facebook_accs_data = facebook_accs_sheet.get_all_values()[1:]
 facebook_accs = []
 
 for index, acc in enumerate(facebook_accs_data):
+    if acc[3] == "Active" and f"facebook_login:{acc[0]}:{acc[1]}" in account_cache:
+        facebook_accs.append(account_cache[f"facebook_login:{acc[0]}:{acc[1]}"])
+        continue
     if acc[3] in ["Active", ""]:
-        if f"facebook_login:{acc[0]}:{acc[1]}" in cache:
-            facebook_accs.append(cache[f"facebook_login:{acc[0]}:{acc[1]}"])
-            continue
         _scraper = FacebookScraper()
         try:
             _scraper.login(acc[0], acc[1])
@@ -30,8 +30,8 @@ for index, acc in enumerate(facebook_accs_data):
                 raise RuntimeError("Login Error")
         except Exception as e:
             error = str(e).replace("Login approval needed", "Account Disabled")
-            print(f"[Facebook] Login Error -> {acc[0]} : {e}")
-            facebook_accs_sheet.update(f"D{index+2}", str(e))
+            print(f"[Facebook] Login Error -> {acc[0]} : {error}")
+            facebook_accs_sheet.update(f"D{index+2}", str(error))
             facebook_accs_sheet.format(
                 f"D{index+2}",
                 {"textFormat": {"bold": True, "foregroundColor": {"red": 1.0, "green": 0.0, "blue": 0.0}}},
@@ -44,7 +44,7 @@ for index, acc in enumerate(facebook_accs_data):
             f"D{index+2}",
             {"textFormat": {"bold": True, "foregroundColor": {"red": 0.2039, "green": 0.6588, "blue": 0.3254}}},
         )
-        cache[f"facebook_login:{acc[0]}:{acc[1]}"] = [f"D{index+2}", _scraper.session.cookies]
+        account_cache[f"facebook_login:{acc[0]}:{acc[1]}"] = [f"D{index+2}", _scraper.session.cookies]
 
 facebook_index = 0
 MAX_FACE_MATCH_POINTS = 3
