@@ -7,6 +7,7 @@ from utils.config import config
 from utils.cache import cache
 from utils.image import *
 from utils.drive import get_file
+import threading
 
 google_api_sheet = get_file(config["GOOGLE_API_FILE"]["id"], config["GOOGLE_API_FILE"]["sheet"])
 google_api_data = google_api_sheet.get_all_values()[1:]
@@ -94,6 +95,9 @@ def google_search(search_term: str, search_type, max_terms: int = 5) -> List[Goo
     raise ValueError("Error in GoogleAPI..")
 
 
+face_lock = threading.Lock()
+
+
 def similar_image(source, test) -> bool:
     if f"face:{source} {test}" in cache:
         return cache[f"face:{source} {test}"]
@@ -102,23 +106,24 @@ def similar_image(source, test) -> bool:
     if not source or not test:
         cache[f"face:{source} {test}"] = False
         return False
-    try:
-        known_image = face_recognition.load_image_file(requests.get(source, stream=True).raw)
-        unknown_image = face_recognition.load_image_file(requests.get(test, stream=True).raw)
+    with face_lock:
+        try:
+            known_image = face_recognition.load_image_file(requests.get(source, stream=True).raw)
+            unknown_image = face_recognition.load_image_file(requests.get(test, stream=True).raw)
 
-        known_encoding = face_recognition.face_encodings(known_image)
-        unknown_encoding = face_recognition.face_encodings(unknown_image)
+            known_encoding = face_recognition.face_encodings(known_image)
+            unknown_encoding = face_recognition.face_encodings(unknown_image)
 
-        if not known_encoding or not unknown_encoding:
+            if not known_encoding or not unknown_encoding:
+                cache[f"face:{source} {test}"] = False
+                return False
+
+            result = face_recognition.compare_faces([known_encoding[0]], unknown_encoding[0])[0]
+            cache[f"face:{source} {test}"] = result
+
+            return result
+
+        except Exception as e:
+            print("FaceAPI Error :", e)
             cache[f"face:{source} {test}"] = False
-            return False
-
-        result = face_recognition.compare_faces([known_encoding[0]], unknown_encoding[0])[0]
-        cache[f"face:{source} {test}"] = result
-
-        return result
-
-    except Exception as e:
-        print("FaceAPI Error :", e)
-        cache[f"face:{source} {test}"] = False
-    return False
+        return False
