@@ -8,5 +8,6 @@ face-recognition @ git+https://github.com/ageitgey/face_recognition@87a8449a359f
 face-recognition-models
 boto3
 sqlitedict
-facebook-scraper @ git+https://github.com/kevinzg/facebook-scraper.git@bb7135e961b8878272ab10cb3951b17dfefe0af1
-shutil
+facebook-scraper @ git+https://github.com/kevinzg/facebook-scraper.git@d77824db2e2e26ea0042da28178cee8c8ec57734
+igramscraper
+PyDrive2
