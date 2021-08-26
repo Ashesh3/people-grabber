@@ -8,6 +8,9 @@ from utils.cache import cache
 from utils.config import config
 from requests.cookies import cookiejar_from_dict
 
+linkedin_accs = config["LINKEDIN_COOKIES"]
+linkedin_index = 0
+
 
 async def search(thread_id: int, doc_name: str, speciality: str, max_terms: int = 10) -> ModuleResults:
     doc_name = doc_name.lower()
@@ -57,18 +60,19 @@ def clean_data(linkedin_profile_json):
 
 
 async def linkedin_scrape(thread_id: int, username: str) -> str:
+    global linkedin_index
     if f"linkedin:{username}" in cache:
         return cache[f"linkedin:{username}"]
     if config["DRY_RUN"]:
         return "{}"
     for tries in range(1, 11):
+        linkedin_index += 1
+        linkedin_acc = linkedin_accs[linkedin_index % len(linkedin_accs)]
         search_result = ""
         try:
             print(f"[{thread_id}][Linkedin] Scraping [{username}] [{tries}]")
             if config["LINKEDIN_MANUAL"]:
-                linkedin_client = linkedin_api.Linkedin(
-                    "", "", cookies=cookiejar_from_dict(config["LINKEDIN_COOKIES"])
-                )
+                linkedin_client = linkedin_api.Linkedin("", "", cookies=cookiejar_from_dict(linkedin_acc))
                 search_result = json.dumps(linkedin_client.get_profile(username))
             else:
                 header_dic = {"Authorization": "Bearer " + config["LINKEDIN_API_KEY"]}
